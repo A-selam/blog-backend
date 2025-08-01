@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-func NewDatabase(mongoURI, dbName string) *mongo.Database {
+func NewDatabase(mongoURI, dbName string) (*mongo.Client, *mongo.Database) {
 	// Initialize MongoDB client
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -32,5 +32,5 @@ func NewDatabase(mongoURI, dbName string) *mongo.Database {
 	}
 
 	// Initialize database
-	return client.Database(dbName)
+	return client, client.Database(dbName)
 }

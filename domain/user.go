@@ -38,6 +38,7 @@ type IUserRepository interface {
 	GetUserByID(ctx context.Context, id string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
+	GetUserByUsernameAndEmail(ctx context.Context, username, email string) (*User, error)
 	UpdateUser(ctx context.Context, id string, updates map[string]interface{}) error
 	DeleteUser(ctx context.Context, id string) error
 

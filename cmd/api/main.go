@@ -6,6 +6,7 @@ import (
 	"blog-backend/infrastructure"
 	"blog-backend/repository"
 	"blog-backend/usecase"
+	"context"
 	"log"
 	"os"
 	"time"
@@ -37,8 +38,8 @@ func main() {
 		log.Fatal("JWT_SECRET is not set")
 	}
 
-	db := infrastructure.NewDatabase(mongoURI, dbName)
-
+	client, db := infrastructure.NewDatabase(mongoURI, dbName)
+	defer client.Disconnect(context.TODO())
 	// Initialize services and repositories
     timeOut := 30 * time.Second
     jwtService := infrastructure.NewJWTService(jwtSecret)

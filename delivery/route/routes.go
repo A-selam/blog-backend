@@ -34,6 +34,7 @@ func NewAuthRouter(handler *controller.AuthController, group *gin.RouterGroup) {
 	group.POST("/auth/refresh-token", )
 	group.POST("/auth/forgot-password", )
 	group.POST("/auth/reset-password", )
+	group.POST("/auth/refresh", handler.RefreshToken)
 }
 
 func NewUserRouter(handler *controller.UserController, group *gin.RouterGroup) {

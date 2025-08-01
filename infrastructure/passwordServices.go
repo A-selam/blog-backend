@@ -1,6 +1,10 @@
 package infrastructure
 
-import "blog-backend/domain"
+import (
+	"blog-backend/domain"
+
+	"golang.org/x/crypto/bcrypt"
+)
 
 type BcryptPasswordService struct{}
 
@@ -9,11 +13,13 @@ func NewPasswordService() domain.IPasswordService {
 }
 
 func (s *BcryptPasswordService) HashPassword(password string) (string, error) {
-	// TODO: Implement the password hashing functionality
-	return "hashedPassword", nil
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashed), nil
 }
 
 func (s *BcryptPasswordService) ComparePassword(hashedPassword, plainPassword string) error {
-	// TODO: Implement the password comparison function
-	return nil
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(plainPassword))
 }
