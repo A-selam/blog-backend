@@ -24,7 +24,7 @@ func NewDatabase(mongoURI, dbName string) *mongo.Database {
 	if err != nil {
 		log.Fatal("MongoDB connection error:", err)
 	}
-	defer client.Disconnect(context.Background())
+	// defer client.Disconnect(context.Background())
 
 	// Verify connection
 	if err := client.Ping(ctx, nil); err != nil {

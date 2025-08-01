@@ -30,6 +30,8 @@ func Setup(ac *controller.AuthController, bc *controller.BlogController, uc *con
 func NewAuthRouter(handler *controller.AuthController, group *gin.RouterGroup) {
 	group.POST("/auth/register", )
 	group.POST("/auth/login", )
+	group.POST("/auth/logout", handler.Logout)
+	group.POST("/auth/refresh-token", )
 	group.POST("/auth/forgot-password", )
 	group.POST("/auth/reset-password", )
 }

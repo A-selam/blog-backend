@@ -3,6 +3,7 @@ package usecase
 import (
 	"blog-backend/domain"
 	"context"
+	"errors"
 	"time"
 )
 
@@ -44,7 +45,10 @@ func (au *authUsecase) Login(ctx context.Context, email, password string) (*doma
 }
 
 func (au *authUsecase) Logout(ctx context.Context, refreshToken string) error {
-	// TODO: implement this function
+	err := au.refreshTokenRepository.DeleteRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return errors.New("failed to delete refresh token")
+	}
 	return nil
 }
 

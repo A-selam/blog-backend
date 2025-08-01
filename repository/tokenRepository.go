@@ -31,12 +31,25 @@ func (tr *refreshTokenRepository) GetRefreshToken(ctx context.Context, token str
 }
 
 func (tr *refreshTokenRepository) DeleteRefreshToken(ctx context.Context, token string) error {
-	// TODO: implement this function
+	res, err := tr.database.Collection(tr.collection).DeleteOne(ctx, map[string]interface{}{"token": token})
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0{
+		return domain.ErrTokenNotFound
+	}
 	return nil
 }
 
 func (tr *refreshTokenRepository) DeleteRefreshTokensForUser(ctx context.Context, userID string) error {
-	// TODO: implement this function
+
+	res, err := tr.database.Collection(tr.collection).DeleteMany(ctx, map[string]interface{}{"userID": userID})
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0{
+		return domain.ErrTokenNotFound
+	}
 	return nil
 }
 
