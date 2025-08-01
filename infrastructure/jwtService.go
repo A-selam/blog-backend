@@ -2,6 +2,9 @@ package infrastructure
 
 import (
 	"blog-backend/domain"
+	"time"
+
+	"github.com/golang-jwt/jwt"
 )
 
 type jWTService struct {
@@ -12,9 +15,16 @@ func NewJWTService(secret string) domain.IJWTService {
 	return &jWTService{secret: []byte(secret)}
 }
 
-func (j *jWTService) GenerateToken(username, role string) (string, error) {
-	// TODO: Generate access token
-	return "", nil
+func (j *jWTService) GenerateToken(userID,username, email, role string) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": userID,
+		"username": username,
+		"email":    email,
+		"role":     role,
+		"exp":      time.Now().Add(30 * time.Minute).Unix(),
+	})
+
+	return token.SignedString([]byte(j.secret))
 }
 
 

@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-func NewDatabase(mongoURI, dbName string) *mongo.Database {
+func NewDatabase(mongoURI, dbName string) (*mongo.Client, *mongo.Database) {
 	// Initialize MongoDB client
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -24,7 +24,7 @@ func NewDatabase(mongoURI, dbName string) *mongo.Database {
 	if err != nil {
 		log.Fatal("MongoDB connection error:", err)
 	}
-	defer client.Disconnect(context.Background())
+	// defer client.Disconnect(context.Background())
 
 	// Verify connection
 	if err := client.Ping(ctx, nil); err != nil {
@@ -32,5 +32,5 @@ func NewDatabase(mongoURI, dbName string) *mongo.Database {
 	}
 
 	// Initialize database
-	return client.Database(dbName)
+	return client, client.Database(dbName)
 }

@@ -16,7 +16,7 @@ type RefreshToken struct {
 type TokenPair struct {
     AccessToken  string
     RefreshToken string
-    ExpiresIn    int64 
+    ExpiresIn    time.Time 
 }
 
 type PasswordResetToken struct {
@@ -30,7 +30,8 @@ type PasswordResetToken struct {
 
 type IRefreshTokenRepository interface {
 	// Refresh Tokens
-	CreateRefreshToken(ctx context.Context, token *RefreshToken) (*RefreshToken, error)
+	CreateRefreshToken(ctx context.Context, userID, refToken string) (*RefreshToken, error)
+	ReplaceRefreshToken(ctx context.Context, userID, refToken string) (*RefreshToken, error)
 	GetRefreshToken(ctx context.Context, token string) (*RefreshToken, error)
 	DeleteRefreshToken(ctx context.Context, token string) error
 	DeleteRefreshTokensForUser(ctx context.Context, userID string) error
