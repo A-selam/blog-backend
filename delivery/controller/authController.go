@@ -44,10 +44,26 @@ func (ac *AuthController)ForgotPassword(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Invalid request: email is required"})
 		return
 	}
-	err := ac.AuthUseCase.ForgotPassword(c, request.Email)
+	token, err := ac.AuthUseCase.ForgotPassword(c, request.Email)
 	if err != nil {	
 		c.JSON(500, gin.H{"error": "Failed to process forgot password request."})
 		return	
 
 	}
+	c.JSON(200, gin.H{"message": "Password reset", "token": token})
+}
+func (ac *AuthController)ResetPassword(c *gin.Context) {
+	var request struct{
+		Password string `json:"password" binding:"required"`
+		Token string `json:"token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid Request token and password required"})
+	}
+	err := ac.AuthUseCase.ResetPassword(c, request.Token, request.Password)
+	if err != nil{
+		c.JSON(500, gin.H{"error": "Failed to process reset password"})
+	}
+	c.JSON(200, gin.H{"message": "Password reset successfully"})
+
 }

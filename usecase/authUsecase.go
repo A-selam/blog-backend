@@ -58,10 +58,10 @@ func (au *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (*
 	return nil, nil
 }
 
-func (au *authUsecase) ForgotPassword(ctx context.Context, email string) error {
+func (au *authUsecase) ForgotPassword(ctx context.Context, email string) (token string, err error) {
 	res, err := au.userRepository.GetUserByEmail(ctx, email)
 	if err != nil{
-		return domain.ErrInvalidUser
+		return "", domain.ErrInvalidUser
 	}
 
 	resetToken := &domain.PasswordResetToken{
@@ -73,12 +73,31 @@ func (au *authUsecase) ForgotPassword(ctx context.Context, email string) error {
 		CreatedAt: time.Now(),
 	}
 
-	au.resetTokenRepository.CreatePasswordResetToken(ctx,resetToken )
+	createdToken, err := au.resetTokenRepository.CreatePasswordResetToken(ctx,resetToken )
+	if err != nil{
+		return "", err
+	}
 
-	return nil
+	return createdToken.Token, nil
 }
 
 func (au *authUsecase) ResetPassword(ctx context.Context, token, newPassword string) error {	
 	// TODO: implement this function
+	resetToken, err := au.resetTokenRepository.GetPasswordResetToken(ctx, token)
+	if err != nil {
+		return domain.ErrInvalidPasswordResetToken
+	}
+	hashedPassword, err := au.passwordServices.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	updates := map[string]interface{}{
+		"password_hash": hashedPassword,
+		"updated_at": time.Now(),
+	}
+	err = au.userRepository.UpdateUser(ctx, resetToken.UserID, updates)
+	if err != nil{
+		return err
+	}
 	return nil
 }

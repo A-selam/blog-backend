@@ -7,7 +7,7 @@ type IAuthUseCase interface {
 	Login(ctx context.Context, email, password string) (*User, *TokenPair, error)
 	Logout(ctx context.Context, refreshToken string) error
 	RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error)
-	ForgotPassword(ctx context.Context, email string) error
+	ForgotPassword(ctx context.Context, email string) (string, error)
 	ResetPassword(ctx context.Context, token, newPassword string) error
 }
 
