@@ -32,7 +32,7 @@ func (tr *refreshTokenRepository) GetRefreshToken(ctx context.Context, token str
 }
 
 func (tr *refreshTokenRepository) DeleteRefreshToken(ctx context.Context, token string) error {
-	res, err := tr.database.Collection(tr.collection).DeleteOne(ctx, map[string]interface{}{"token": token})
+	res, err := tr.database.Collection(tr.collection).DeleteOne(ctx,bson.M{"token": token})
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (tr *refreshTokenRepository) DeleteRefreshToken(ctx context.Context, token 
 
 func (tr *refreshTokenRepository) DeleteRefreshTokensForUser(ctx context.Context, userID string) error {
 
-	res, err := tr.database.Collection(tr.collection).DeleteMany(ctx, map[string]interface{}{"userID": userID})
+	res, err := tr.database.Collection(tr.collection).DeleteMany(ctx, bson.M{"user_id": userID})
 	if err != nil {
 		return err
 	}
