@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"time"
+	"github.com/google/uuid"
 )
 
 type authUsecase struct {
@@ -58,11 +59,26 @@ func (au *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (*
 }
 
 func (au *authUsecase) ForgotPassword(ctx context.Context, email string) error {
-	// TODO: implement this function
+	res, err := au.userRepository.GetUserByEmail(ctx, email)
+	if err != nil{
+		return domain.ErrInvalidUser
+	}
+
+	resetToken := &domain.PasswordResetToken{
+		ID:        uuid.New().String(),
+		UserID:    res.ID,
+		Token:     uuid.New().String(),
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+		Used:      false,
+		CreatedAt: time.Now(),
+	}
+
+	au.resetTokenRepository.CreatePasswordResetToken(ctx,resetToken )
+
 	return nil
 }
 
-func (au *authUsecase) ResetPassword(ctx context.Context, token, newPassword string) error {
+func (au *authUsecase) ResetPassword(ctx context.Context, token, newPassword string) error {	
 	// TODO: implement this function
 	return nil
 }

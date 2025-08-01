@@ -34,3 +34,20 @@ func (ac *AuthController)Logout(c *gin.Context ) {
 	}
 	c.JSON(200, gin.H{"message": "User logged out successfully!"})
 }
+
+func (ac *AuthController)ForgotPassword(c *gin.Context) {
+	var request struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request: email is required"})
+		return
+	}
+	err := ac.AuthUseCase.ForgotPassword(c, request.Email)
+	if err != nil {	
+		c.JSON(500, gin.H{"error": "Failed to process forgot password request."})
+		return	
+
+	}
+}

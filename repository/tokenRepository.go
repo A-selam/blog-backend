@@ -3,7 +3,8 @@ package repository
 import (
 	"blog-backend/domain"
 	"context"
-
+	"time"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -65,18 +66,56 @@ func NewResetTokenRepository(db *mongo.Database) domain.IResetTokenRepository {
 	}
 }
 
-// Password Reset Tokens
 func (tr *resetTokenRepository) CreatePasswordResetToken(ctx context.Context, token *domain.PasswordResetToken) (*domain.PasswordResetToken, error) {
-	// TODO: implement this function
-	return nil, nil
+    if token.CreatedAt.IsZero() {
+        token.CreatedAt = time.Now()
+    }
+    if !token.Used {
+        token.Used = false
+    }
+
+    _, err := tr.database.Collection(tr.collection).InsertOne(ctx, token)
+    if err != nil {
+        return nil, err
+    }
+    return token, nil
 }
 
 func (tr *resetTokenRepository) GetPasswordResetToken(ctx context.Context, token string) (*domain.PasswordResetToken, error) {
-	// TODO: implement this function
-	return nil, nil
+    var result domain.PasswordResetToken
+    err := tr.database.Collection(tr.collection).FindOne(ctx, bson.M{"token": token}).Decode(&result)
+    if err == mongo.ErrNoDocuments {
+        return nil, domain.ErrTokenNotFound
+    }
+    if err != nil {
+        return nil, err
+    }
+    
+    if result.Used {
+        return nil, domain.ErrTokenUsed
+    }
+    
+    if !result.ExpiresAt.IsZero() && result.ExpiresAt.Before(time.Now()) {
+        return nil, domain.ErrTokenExpired
+    }
+    
+    return &result, nil
 }
 
 func (tr *resetTokenRepository) MarkPasswordResetTokenUsed(ctx context.Context, token string) error {
-	// TODO: implement this function
-	return nil
+    update := bson.M{
+        "$set": bson.M{
+            "used":      true,
+            "updatedAt": time.Now(),
+        },
+    }
+    
+    result, err := tr.database.Collection(tr.collection).UpdateOne(ctx, bson.M{"token": token}, update)
+    if err != nil {
+        return err
+    }
+    if result.MatchedCount == 0 {
+        return domain.ErrTokenNotFound
+    }
+    return nil
 }
