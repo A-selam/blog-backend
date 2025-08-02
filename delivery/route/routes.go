@@ -36,8 +36,9 @@ func NewAuthRouter(handler *controller.AuthController, group *gin.RouterGroup) {
 }
 
 func NewUserRouter(handler *controller.UserController, group *gin.RouterGroup) {
-	group.GET("/users/me", )
-	group.PATCH("/users/me", )
+	group.GET("/users/me", handler.GetCurrentUserProfile)
+	group.PATCH("/users/me",handler.UpdateCurrentUserProfile )
+	group.GET("/users/:id", handler.GetUserByID)
 }
 
 func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup) {
@@ -60,7 +61,7 @@ func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGrou
 
 func NewAdminRouter(userHandler *controller.UserController, blogHandler *controller.BlogController, group *gin.RouterGroup) {
 	// User Management
-	group.GET("/users", )
+	group.GET("/users",)
 	group.POST("/users/:id/promote", )
 	group.POST("/users/:id/demote", )
 	group.DELETE("/users/:id", )
