@@ -61,6 +61,7 @@ type IBlogRepository interface {
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
 
 	// Blog Metrics
+	BlogMetricsInitializer(ctx context.Context, blogID string) error
 	GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
 	IncrementViewCount(ctx context.Context, blogID string) error
 }
@@ -80,7 +81,7 @@ type ICommentRepository interface {
 }
 
 type IBlogUseCase interface {
-	CreateBlog(ctx context.Context, authorID string, title, content string, tags []string) (*Blog, error)
+	CreateBlog(ctx context.Context, blog *Blog) (*Blog, error)
 	GetBlog(ctx context.Context, blogID string) (*Blog, *BlogMetrics, error)
 	UpdateBlog(ctx context.Context, blogID string, updates map[string]interface{}) error
 	DeleteBlog(ctx context.Context, blogID, authorID string) error
