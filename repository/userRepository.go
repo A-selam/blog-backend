@@ -84,7 +84,20 @@ func (ur userRepository) GetUserByUsernameAndEmail(ctx context.Context, username
 }
 
 func (ur userRepository) UpdateUser(ctx context.Context, id string, updates map[string]interface{}) error {
-	// TODO: Implement the function
+	collection := ur.database.Collection(ur.collection)
+
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return  err
+	}
+
+	filter := bson.D{{Key: "_id", Value: oid}}
+	updateDoc := bson.D{{Key: "$set", Value: updates}}
+
+	_, err = collection.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

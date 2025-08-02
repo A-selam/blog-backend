@@ -22,12 +22,22 @@ func NewUserUsecase(
 }
 
 func (uu *userUsecase) GetProfile(ctx context.Context, userID string) (*domain.User, error) {
-	// TODO: implement this function
-	return nil, nil
+	user, err := uu.userRepository.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (uu *userUsecase) UpdateProfile(ctx context.Context, userID string, updates map[string]interface{}) error {
-	// TODO: implement this function
+	updates["updated_at"] = time.Now()
+
+	err := uu.userRepository.UpdateUser(ctx, userID, updates)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
