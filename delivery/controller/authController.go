@@ -217,21 +217,17 @@ func emailValidator(email string) error {
 }
 
 func (ac *AuthController)Logout(c *gin.Context ) {
-	var request struct {
-		RefreshToken string `json:"refresh_token" binding:"required" `
+	RefreshToken, err := c.Cookie("refresh_token")
+	if err != nil || RefreshToken == "" {
+		c.JSON(400, gin.H{"error": "Refresh token missing"})
+		return
 	}
-	if err:= c.ShouldBindJSON(&request); err != nil {
-		c.JSON(400, gin.H{"error": "Invalid request: refresh token is required"})	
-	}
+	c.SetCookie("refresh_token", "", -1, "/", "", true, true)
 
-	_, exists := c.Get("userID")
-	if !exists {
-		c.JSON(400, gin.H{"error": "User ID not found in context"})
-	}
-
-	err := ac.AuthUseCase.Logout(c, request.RefreshToken)
+	err = ac.AuthUseCase.Logout(c, RefreshToken)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to logout user."})
+		return
 	}
 	c.JSON(200, gin.H{"message": "User logged out successfully!"})
 }
@@ -253,18 +249,30 @@ func (ac *AuthController)ForgotPassword(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"message": "Password reset", "token": token})
 }
-func (ac *AuthController)ResetPassword(c *gin.Context) {
-	var request struct{
-		Password string `json:"password" binding:"required"`
-		Token string `json:"token" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(400, gin.H{"error": "Invalid Request token and password required"})
-	}
-	err := ac.AuthUseCase.ResetPassword(c, request.Token, request.Password)
-	if err != nil{
-		c.JSON(500, gin.H{"error": "Failed to process reset password"})
-	}
-	c.JSON(200, gin.H{"message": "Password reset successfully"})
+func (ac *AuthController) ResetPassword(c *gin.Context) {
+    var request struct {
+        Password string `json:"password" binding:"required,min=8"`
+        Token    string `json:"token" binding:"required"`
+    }
+    if err := c.ShouldBindJSON(&request); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: token and password (minimum 8 characters) are required"})
+        return
+    }
 
+    err := ac.AuthUseCase.ResetPassword(c, request.Token, request.Password)
+    if err != nil {
+        switch err {
+        case domain.ErrTokenNotFound:
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or unknown reset token"})
+        case domain.ErrTokenUsed:
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Reset token has already been used"})
+        case domain.ErrTokenExpired:
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Reset token has expired"})
+        default:
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process reset password"})
+        }
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})
 }

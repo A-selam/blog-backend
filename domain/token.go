@@ -49,11 +49,9 @@ var (
 	ErrTokenNotFound = errors.New("token not found")
 	ErrInvalidBlogTitle = errors.New("invalid blog title")
 	ErrInvalidBlogContent = errors.New("invalid blog content")
-	ErrInvalidUser = errors.New("user not found")
 	ErrInvalidPasswordResetToken = errors.New("invalid password reset token")
 	ErrPasswordResetTokenExpired = errors.New("password reset token expired")
 	ErrTokenUsed = errors.New("token already used")
-	ErrUserAlreadyExists = errors.New("user already exists")
 	ErrTokenExpired = errors.New("token expired")
 	
 

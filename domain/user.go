@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -58,3 +59,12 @@ type IUserUseCase interface {
 	PromoteToAdmin(ctx context.Context, adminID, targetUserID string) error
 	DemoteToUser(ctx context.Context, adminID, targetUserID string) error
 }
+
+var (
+	ErrInvalidUserID = errors.New("invalid user id")
+	ErrInvalidUser    = errors.New("invalid user")
+	ErrUserNotAuthorized = errors.New("user not authorized")
+	ErrUserNotFound    = errors.New("user not found")
+	ErrUserAlreadyExists = errors.New("user already exists")
+
+)

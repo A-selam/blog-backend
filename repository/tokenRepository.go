@@ -14,6 +14,7 @@ type refreshTokenRepository struct {
 	collection string
 }
 
+
 func NewRefreshTokenRepositoryFromDB(db *mongo.Database) domain.IRefreshTokenRepository {
 	return &refreshTokenRepository{
 		database:   db,
@@ -111,10 +112,10 @@ type resetTokenRepository struct {
 }
 
 func NewResetTokenRepository(db *mongo.Database) domain.IResetTokenRepository {
-	return &resetTokenRepository{
-		database:   db,
-		collection: "refreshTokens",
-	}
+    return &resetTokenRepository{
+        database:   db,
+        collection: "passwordResetTokens", 
+    }
 }
 
 func (tr *resetTokenRepository) CreatePasswordResetToken(ctx context.Context, token *domain.PasswordResetToken) (*domain.PasswordResetToken, error) {
@@ -187,7 +188,7 @@ func refreshToken(userID, token string) (*refreshTokenDTO, error) {
 	return &refreshTokenDTO{
 		Token:     token,
 		UserID:    oid,
-		ExpiresAt: time.Now().Add(7 * 24 * time.Hour), // Example expiration time
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour), 
 		CreatedAt: time.Now(),
 	}, nil
 }

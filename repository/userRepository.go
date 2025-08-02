@@ -4,8 +4,8 @@ import (
 	"blog-backend/domain"
 	"context"
 	"fmt"
+	"log"
 	"time"
-
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -83,9 +83,45 @@ func (ur userRepository) GetUserByUsernameAndEmail(ctx context.Context, username
 	return DTOToDomain(user), nil
 }
 
+
 func (ur userRepository) UpdateUser(ctx context.Context, id string, updates map[string]interface{}) error {
-	// TODO: Implement the function
-	return nil
+
+    if id == "" {
+        return domain.ErrInvalidUserID
+    }
+    oid, err := bson.ObjectIDFromHex(id)
+    if err != nil {
+        log.Printf("Invalid ObjectID: %v", err)
+        return fmt.Errorf("invalid user ID: %v", err)
+    }
+
+    updates["updated_at"] = time.Now()
+
+    filter := bson.M{"_id": oid}
+    update := bson.M{"$set": updates}
+
+    collection := ur.database.Collection(ur.collection)
+    result, err := collection.UpdateOne(ctx, filter, update)
+    if err != nil {
+        log.Printf("Update error: %v (collection: %s)", err, ur.collection)
+        return fmt.Errorf("failed to update user: %v", err)
+    }
+
+    if result.MatchedCount == 0 {
+        // var doc bson.M
+        // err := collection.FindOne(ctx, filter).Decode(&doc)
+        // if err == mongo.ErrNoDocuments {
+        //     log.Printf("Document with _id=%v not found in collection '%s'", oid, ur.collection)
+        //     return domain.ErrUserNotFound
+        // } else if err != nil {
+        //     log.Printf("Find error: %v", err)
+        //     return fmt.Errorf("failed to check document existence: %v", err)
+        // }
+        // log.Printf("Document exists but wasn't updated (possible no-op)")
+        return domain.ErrUserNotFound 
+    }
+
+    return nil
 }
 
 func (ur userRepository) DeleteUser(ctx context.Context, id string) error {
