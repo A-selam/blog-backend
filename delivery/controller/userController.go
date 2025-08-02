@@ -58,7 +58,7 @@ func (uc *UserController) UpdateCurrentUserProfile(c *gin.Context) {
 
 	err := uc.UserUseCase.UpdateProfile(c, userID.(string), updates)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user profile."})
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
 

@@ -9,15 +9,20 @@ import (
 type userUsecase struct {
 	userRepository   domain.IUserRepository
 	contextTimeout   time.Duration
+	passwordServices domain.IPasswordService
+
 }
 
 func NewUserUsecase(
 	userRepository   domain.IUserRepository,
 	timeout time.Duration,
+	passwordServices domain.IPasswordService,
+
 ) domain.IUserUseCase {
 	return &userUsecase{
 		userRepository:   userRepository,
 		contextTimeout:   timeout,
+		passwordServices: passwordServices,
 	}
 }
 
@@ -33,11 +38,19 @@ func (uu *userUsecase) GetProfile(ctx context.Context, userID string) (*domain.U
 func (uu *userUsecase) UpdateProfile(ctx context.Context, userID string, updates map[string]interface{}) error {
 	updates["updated_at"] = time.Now()
 
+	if newPass, ok := updates["password"].(string); ok {
+		hashedPass, err := uu.passwordServices.HashPassword(newPass)
+		if err != nil {
+			return err
+		}
+		updates["password_hash"] = hashedPass
+		delete(updates, "password")
+	}
+
 	err := uu.userRepository.UpdateUser(ctx, userID, updates)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 

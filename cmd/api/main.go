@@ -46,7 +46,7 @@ func main() {
     passwordService := infrastructure.NewPasswordService()
 
 	ur := repository.NewUserRepositoryFromDB(db)
-	uu := usecase.NewUserUsecase(ur, timeOut)
+	uu := usecase.NewUserUsecase(ur, timeOut,passwordService)
 	uc := controller.NewUserController(uu)
 
 	bcr := repository.NewCommentRepositoryFromDB(db)

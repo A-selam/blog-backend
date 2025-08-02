@@ -145,6 +145,9 @@ func (br *blogRepository) IncrementViewCount(ctx context.Context, blogID string)
 func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (bool, error) {
 	collection := br.database.Collection(br.collection)
 	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return false, err
+	}
 	ouid,err := bson.ObjectIDFromHex(userID)
 	if err != nil {
 		return false, err
