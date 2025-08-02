@@ -40,6 +40,58 @@ func (bc *BlogController) CreateBlog(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"blog": createdBlog})
 }
 
+func (bc *BlogController) DeleteBlog(c *gin.Context) {
+	blogID := c.Param("id")
+	userID, _ := c.Get("x-user-id")
+	userRole, _ := c.Get("x-user-role")
+
+	isAuthor, err := bc.BlogUseCase.IsBlogAuthor(c, blogID, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify author."})
+		return
+	}
+
+	if !isAuthor && userRole.(string) != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to delete this blog."})
+		return
+	}
+
+	err = bc.BlogUseCase.DeleteBlog(c, blogID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete blog."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Blog deleted successfully."})
+}
+
+func (bc *BlogController) SearchBlogs(c *gin.Context) {
+	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Query parameter 'q' is required."})
+		return
+	}
+
+	blogs, err := bc.BlogUseCase.SearchBlogs(c, query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search blogs."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"blogs": blogs})
+}
+
+func (bc *BlogController) GetBlogsByUserID(c *gin.Context) {
+	userID := c.Param("id")
+
+	blogs, err := bc.BlogUseCase.GetBlogsByUserID(c, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user's blogs."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"blogs": blogs})
+}
 // DTOs
 
 type BlogDTO struct {

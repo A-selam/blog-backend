@@ -26,7 +26,7 @@ func NewAuthMiddleware(jwtService domain.IJWTService) gin.HandlerFunc {
 
 		tokenString := parts[1]
 
-		userID, _, err := jwtService.ParseToken(tokenString)
+		userID, role, err := jwtService.ParseToken(tokenString)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token", "details": err.Error()})
 			c.Abort()
@@ -34,12 +34,19 @@ func NewAuthMiddleware(jwtService domain.IJWTService) gin.HandlerFunc {
 		}
 		// i saved the user id coz i need it for some bunch of me related api's
 		c.Set("x-user-id", userID)
+		c.Set("x-user-role",role)
 		c.Next()
 	}
 }
 
 func NewAdminMiddleware() gin.HandlerFunc{
-	return func(c *gin.Context){
-		// TODO: implement the admin check middleware
+	return func(c *gin.Context) {
+		role, ok := c.Get("x-user-role")
+		if !ok || role.(string) != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied. Admin privileges required."})
+			c.Abort()
+			return
+		}
+		c.Next()
 	}
 }
