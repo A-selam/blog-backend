@@ -50,7 +50,7 @@ func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 }
 
 func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGroup) {
-	group.POST("/blogs", )
+	group.POST("/blogs", handler.CreateBlog)
 	group.PATCH("/blogs/:id", )
 	group.DELETE("/blogs/:id", )
 	group.POST("/blogs/:id/like", )

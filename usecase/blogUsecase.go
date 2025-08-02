@@ -27,9 +27,23 @@ func NewBlogUsecase(
 	}
 }
 
-func (bu *blogUsecase) CreateBlog(ctx context.Context, authorID string, title, content string, tags []string) (*domain.Blog, error) {
-	// TODO: implement this function
-	return nil, nil
+func (bu *blogUsecase) CreateBlog(ctx context.Context, blog *domain.Blog) (*domain.Blog, error) {
+	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
+	defer cancel()
+
+	createdBlog, err := bu.blogRepository.CreateBlog(ctx, blog)
+	if err != nil {	
+		// fmt.Println(err)
+		return nil, err
+	}	
+		
+	// Initialize blog metrics
+	err = bu.blogRepository.BlogMetricsInitializer(ctx, createdBlog.ID)
+	if err != nil {	
+		return nil, err
+	}
+
+	return createdBlog, nil
 }
 
 func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog, *domain.BlogMetrics, error) {
