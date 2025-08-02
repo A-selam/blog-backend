@@ -22,8 +22,8 @@ func Setup(ac *controller.AuthController, bc *controller.BlogController, uc *con
 
 	// ============ Admin Routes ============
 	adminRouter := engine.Group("/api/admin")
-	adminRouter.Use(middleware.NewAdminMiddleware())
 	adminRouter.Use(middleware.NewAuthMiddleware(jwtService))
+	adminRouter.Use(middleware.NewAdminMiddleware())
 	NewAdminRouter(uc, bc, adminRouter)
 }
 
@@ -62,8 +62,8 @@ func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGrou
 func NewAdminRouter(userHandler *controller.UserController, blogHandler *controller.BlogController, group *gin.RouterGroup) {
 	// User Management
 	group.GET("/users",)
-	group.POST("/users/:id/promote", )
-	group.POST("/users/:id/demote", )
+	group.POST("/users/:id/promote", userHandler.PromoteUser)
+	group.POST("/users/:id/demote", userHandler.DemoteUser)
 	group.DELETE("/users/:id", )
 
 	// Blog Moderation
