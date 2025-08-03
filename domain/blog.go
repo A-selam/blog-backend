@@ -61,8 +61,11 @@ type IBlogRepository interface {
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
 
 	// Blog Metrics
+	BlogMetricsInitializer(ctx context.Context, blogID string) error
 	GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
 	IncrementViewCount(ctx context.Context, blogID string) error
+	//Blog autherization
+	IsAuthor(ctx context.Context, blogID, userID string) (bool, error)
 }
 
 type IReactionRepository interface {
@@ -80,13 +83,14 @@ type ICommentRepository interface {
 }
 
 type IBlogUseCase interface {
-	CreateBlog(ctx context.Context, authorID string, title, content string, tags []string) (*Blog, error)
+	CreateBlog(ctx context.Context, blog *Blog) (*Blog, error)
 	GetBlog(ctx context.Context, blogID string) (*Blog, *BlogMetrics, error)
 	UpdateBlog(ctx context.Context, blogID string, updates map[string]interface{}) error
-	DeleteBlog(ctx context.Context, blogID, authorID string) error
+	DeleteBlog(ctx context.Context, blogID string) error
 	ListBlogs(ctx context.Context, page, limit int) ([]*Blog, error)
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
-
+	IsBlogAuthor(ctx context.Context, blogID, userID string) (bool, error)
+	GetBlogsByUserID(ctx context.Context, userID string) ([]*Blog, error)
 	// Reactions
 	AddReaction(ctx context.Context, blogID, userID string, reactionType string) error
 	RemoveReaction(ctx context.Context, blogID, userID string) error
@@ -94,4 +98,5 @@ type IBlogUseCase interface {
 	// Comments
 	AddComment(ctx context.Context, blogID, authorID string, content string) (*Comment, error)
 	GetComments(ctx context.Context, blogID string) ([]*Comment, error)
+
 }

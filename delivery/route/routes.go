@@ -38,22 +38,23 @@ func NewAuthRouter(handler *controller.AuthController, group *gin.RouterGroup) {
 }
 
 func NewUserRouter(handler *controller.UserController, group *gin.RouterGroup) {
-	group.GET("/users/me", )
-	group.PATCH("/users/me", )
+	group.GET("/users/me", handler.GetCurrentUserProfile)
+	group.PATCH("/users/me",handler.UpdateCurrentUserProfile )
+	group.GET("/users/:id", handler.GetUserByID)
 }
 
 func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 	group.GET("/blogs", )
-	group.GET("/blogs/:id", )
-	group.GET("/blogs/search", )
+	group.GET("/blogs/:id",handler.GetBlogsByUserID )
+	group.GET("/blogs/search", handler.SearchBlogs)
 	group.GET("/blogs/:id/comments", )
 	group.GET("/blogs/:id/metrics", )
 }
 
 func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGroup) {
-	group.POST("/blogs", )
+	group.POST("/blogs", handler.CreateBlog)
 	group.PATCH("/blogs/:id", )
-	group.DELETE("/blogs/:id", )
+	group.DELETE("/blogs/:id", handler.DeleteBlog)
 	group.POST("/blogs/:id/like", )
 	group.POST("/blogs/:id/dislike", )
 	group.DELETE("/blogs/:id/reaction", )
@@ -62,11 +63,11 @@ func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGrou
 
 func NewAdminRouter(userHandler *controller.UserController, blogHandler *controller.BlogController, group *gin.RouterGroup) {
 	// User Management
-	group.GET("/users", )
+	group.GET("/users",)
 	group.POST("/users/:id/promote", )
 	group.POST("/users/:id/demote", )
 	group.DELETE("/users/:id", )
 
 	// Blog Moderation
-	group.DELETE("/blogs/:id", )
+	group.DELETE("/blogs/:id",blogHandler.DeleteBlog)
 }

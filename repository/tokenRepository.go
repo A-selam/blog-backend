@@ -71,9 +71,7 @@ func (tr *refreshTokenRepository) GetRefreshToken(ctx context.Context, token str
 	var refreshTokenDTO refreshTokenDTO
 	err := collection.FindOne(ctx, filter).Decode(&refreshTokenDTO)
 	if err != nil {
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	return &domain.RefreshToken{
