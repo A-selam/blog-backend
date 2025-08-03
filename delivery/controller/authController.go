@@ -211,7 +211,7 @@ func emailValidator(email string) error {
 	// Simple email regex
 	emailRegex := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
 	if matched := regexp.MustCompile(emailRegex).MatchString(email); !matched {
-		return fmt.Errorf("Invalid email format")
+		return fmt.Errorf("invalid email format")
 	}
 	return nil
 }

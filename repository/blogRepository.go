@@ -49,9 +49,9 @@ func (br *blogRepository) BlogMetricsInitializer(ctx context.Context, blogID str
 	}
 
 	blogMetrics := BlogMetricsDTO{
-		BlogID:      id,
-		ViewCount:   0,
-		LikeCount:   0,
+		BlogID:       id,
+		ViewCount:    0,
+		LikeCount:    0,
 		DislikeCount: 0,
 		CommentCount: 0,
 	}
@@ -69,8 +69,13 @@ func (br *blogRepository) UpdateBlog(ctx context.Context, id string, updates map
 	return nil
 }
 func (br *blogRepository) DeleteBlog(ctx context.Context, id string) error {
-	// TODO: implement this function
-	return nil
+	collection := br.database.Collection(br.collection)
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	_, err = collection.DeleteOne(ctx, bson.M{"_id": oid})
+	return err
 }
 
 // Blog Listing
@@ -79,12 +84,51 @@ func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int) ([]*do
 	return nil, nil
 }
 func (br *blogRepository) ListBlogsByAuthor(ctx context.Context, authorID string) ([]*domain.Blog, error) {
-	// TODO: implement this function
-	return nil, nil
+	collection := br.database.Collection(br.collection)
+	filter := bson.M{"author_id": authorID}
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var blogResDTOs []BlogResponseDTO
+	if err = cursor.All(ctx, &blogResDTOs); err != nil {
+		return nil, err
+	}
+
+	blogs := make([]*domain.Blog, len(blogResDTOs))
+	for i, dto := range blogResDTOs {
+		blogs[i] = DtoToDomain(&dto)
+	}
+
+	return blogs, nil
 }
 func (br *blogRepository) SearchBlogs(ctx context.Context, query string) ([]*domain.Blog, error) {
-	// TODO: implement this function
-	return nil, nil
+	collection := br.database.Collection(br.collection)
+	filter := bson.M{
+		"$or": []bson.M{
+			{"title": bson.M{"$regex": query, "$options": "i"}},
+			{"tags": bson.M{"$regex": query, "$options": "i"}},
+		},
+	}
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var blogResDTOs []BlogResponseDTO
+	if err = cursor.All(ctx, &blogResDTOs); err != nil {
+		return nil, err
+	}
+
+	blogs := make([]*domain.Blog, len(blogResDTOs))
+	for i, dto := range blogResDTOs {
+		blogs[i] = DtoToDomain(&dto)
+	}
+
+	return blogs, nil
 }
 
 // Blog Metrics
@@ -97,33 +141,50 @@ func (br *blogRepository) IncrementViewCount(ctx context.Context, blogID string)
 	return nil
 }
 
+// i added this function because we didn't have a function that evaluate blog authers k
+func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (bool, error) {
+	collection := br.database.Collection(br.collection)
+	oid, err := bson.ObjectIDFromHex(blogID)
+	ouid,err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return false, err
+	}
+	filter := bson.M{"_id": oid, "author_id": ouid}
+	count, err := collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
 // DTOs
 
 type BlogMetricsDTO struct {
-	BlogID    		bson.ObjectID `bson:"blog_id"`
-	ViewCount 		int           `bson:"view_count"`
-	LikeCount 		int           `bson:"like_count"`
-	DislikeCount 	int       	  `bson:"dislike_count"`
-	CommentCount 	int           `bson:"comment_count"`
+	BlogID       bson.ObjectID `bson:"blog_id"`
+	ViewCount    int           `bson:"view_count"`
+	LikeCount    int           `bson:"like_count"`
+	DislikeCount int           `bson:"dislike_count"`
+	CommentCount int           `bson:"comment_count"`
 }
 
 type BlogResponseDTO struct {
-	ID          bson.ObjectID 		`bson:"_id"`
-	Title 		string 				`bson:"title" binding:"required"`
-	Content 	string 				`bson:"content" binding:"required"`
-	AuthorID 	bson.ObjectID 		`bson:"author_id" binding:"required"`
-	Tags 		[]string 			`bson:"tags" binding:"required"`
-	CreatedAt 	time.Time 			`bson:"created_at"`
-	UpdatedAt 	time.Time 			`bson:"updated_at"`
+	ID        bson.ObjectID `bson:"_id"`
+	Title     string        `bson:"title" binding:"required"`
+	Content   string        `bson:"content" binding:"required"`
+	AuthorID  bson.ObjectID `bson:"author_id" binding:"required"`
+	Tags      []string      `bson:"tags" binding:"required"`
+	CreatedAt time.Time     `bson:"created_at"`
+	UpdatedAt time.Time     `bson:"updated_at"`
 }
 
 type BlogDTO struct {
-	Title 		string 				`bson:"title" binding:"required"`
-	Content 	string 				`bson:"content" binding:"required"`
-	AuthorID 	bson.ObjectID 		`bson:"author_id" binding:"required"`
-	Tags 		[]string 			`bson:"tags" binding:"required"`
-	CreatedAt 	time.Time 			`bson:"created_at"`
-	UpdatedAt 	time.Time 			`bson:"updated_at"`
+	Title     string        `bson:"title" binding:"required"`
+	Content   string        `bson:"content" binding:"required"`
+	AuthorID  bson.ObjectID `bson:"author_id" binding:"required"`
+	Tags      []string      `bson:"tags" binding:"required"`
+	CreatedAt time.Time     `bson:"created_at"`
+	UpdatedAt time.Time     `bson:"updated_at"`
 }
 
 func DomainToDto(blog *domain.Blog) (*BlogDTO, error) {
