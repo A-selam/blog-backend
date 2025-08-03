@@ -5,9 +5,12 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -103,7 +106,10 @@ func (au *authUsecase) Login(ctx context.Context, email, password string) (*doma
 }
 
 func (au *authUsecase) Logout(ctx context.Context, refreshToken string) error {
-	// TODO: implement this function
+	err := au.refreshTokenRepository.DeleteRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return errors.New("failed to delete refresh token")
+	}
 	return nil
 }
 
@@ -113,16 +119,16 @@ func (au *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (*
 
 	refreshTokenData, err := au.refreshTokenRepository.GetRefreshToken(ctx, refreshToken)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get refresh token: %v", err)
+		return nil, nil, fmt.Errorf("failed to get refresh token: %v", err)
 	}
 	
 	if refreshTokenData == nil || refreshTokenData.ExpiresAt.Before(time.Now()) {
-		return nil, nil, fmt.Errorf("Invalid or expired refresh token")	
+		return nil, nil, fmt.Errorf("invalid or expired refresh token")	
 	}
 	
 	user, err := au.userRepository.GetUserByID(ctx, refreshTokenData.UserID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get user: %v", err)
+		return nil, nil, fmt.Errorf("failed to get user: %v", err)
 	}	
 
 	jwtToken, err := au.jwtServices.GenerateToken(user.ID, user.Username, user.Email, string(user.Role))
@@ -146,14 +152,64 @@ func (au *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (*
 	return user, tokenPair, nil
 }
 
-func (au *authUsecase) ForgotPassword(ctx context.Context, email string) error {
-	// TODO: implement this function
-	return nil
+func (au *authUsecase) ForgotPassword(ctx context.Context, email string) (token string, err error) {
+	res, err := au.userRepository.GetUserByEmail(ctx, email)
+	if err != nil{
+		return "", domain.ErrInvalidUser
+	}
+
+	resetToken := &domain.PasswordResetToken{
+		ID:			uuid.New().String(),
+		UserID:    res.ID,
+		Token:     uuid.New().String(),
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+		Used:      false,
+		CreatedAt: time.Now(),
+	}
+
+	createdToken, err := au.resetTokenRepository.CreatePasswordResetToken(ctx,resetToken)
+	if err != nil{
+		return "", err
+	}
+
+	return createdToken.Token, nil
 }
 
+
 func (au *authUsecase) ResetPassword(ctx context.Context, token, newPassword string) error {
-	// TODO: implement this function
-	return nil
+    ctx, cancel := context.WithTimeout(ctx, au.contextTimeout)
+    defer cancel()
+
+    resetToken, err := au.resetTokenRepository.GetPasswordResetToken(ctx, token)
+    if err != nil {
+        log.Printf("Error fetching reset token: %v", err)
+        return err
+    }
+
+    hashedPassword, err := au.passwordServices.HashPassword(newPassword)
+    if err != nil {
+        log.Printf("Error hashing password: %v", err)
+        return fmt.Errorf("failed to hash password: %v", err)
+    }
+
+    updates := map[string]interface{}{
+        "password_hash": hashedPassword,
+        "updated_at":    time.Now(),
+    }
+    err = au.userRepository.UpdateUser(ctx, resetToken.UserID, updates)
+	log.Print(resetToken.UserID)
+    if err != nil {
+        log.Printf("Error updating user: %v", err)
+        return fmt.Errorf("failed to update user: %v", err)
+    }
+
+    err = au.resetTokenRepository.MarkPasswordResetTokenUsed(ctx, token)
+    if err != nil {
+        log.Printf("Error marking token as used: %v", err)
+        return fmt.Errorf("failed to mark reset token as used: %v", err)
+    }
+
+    return nil
 }
 
 func generateRefreshToken() (string, error) {
