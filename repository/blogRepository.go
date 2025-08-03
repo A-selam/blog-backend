@@ -3,10 +3,13 @@ package repository
 import (
 	"blog-backend/domain"
 	"context"
+	"fmt"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type blogRepository struct {
@@ -61,12 +64,52 @@ func (br *blogRepository) BlogMetricsInitializer(ctx context.Context, blogID str
 }
 
 func (br *blogRepository) GetBlogByID(ctx context.Context, id string) (*domain.Blog, error) {
-	// TODO: implement this function
-	return nil, nil
+	collection := br.database.Collection(br.collection)
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+	var blog BlogResponseDTO
+	filter := bson.M{"_id": oid}
+	err = collection.FindOne(ctx, filter).Decode(&blog)
+	if err != nil {
+		return nil, err
+	}
+
+	return DtoToDomain(&blog), nil
 }
-func (br *blogRepository) UpdateBlog(ctx context.Context, id string, updates map[string]interface{}) error {
-	// TODO: implement this function
-	return nil
+func (br *blogRepository) UpdateBlog(ctx context.Context, id string, userID string, updates map[string]interface{}) error {
+    collection := br.database.Collection(br.collection)
+    oid, err := bson.ObjectIDFromHex(id)
+    if err != nil {
+        return err
+    }
+    var blog BlogResponseDTO
+    filter := bson.M{"_id": oid}
+    err = collection.FindOne(ctx, filter).Decode(&blog)
+    if err != nil {
+        return err
+    }
+
+    authorID := blog.AuthorID.Hex()
+    if authorID != userID {
+        
+        userRepo := NewUserRepositoryFromDB(br.database)
+        user, err := userRepo.GetUserByID(ctx, userID)
+        if err != nil {
+			log.Print("unauthorized: user not found")
+            return fmt.Errorf("unauthorized: user not found")
+        }
+        if user.Role != domain.Admin {
+			log.Print("unauthorized: not author or admin")
+
+            return fmt.Errorf("unauthorized: not author or admin")
+        }
+    }
+
+    update := bson.M{"$set": updates}
+    _, err = collection.UpdateOne(ctx, filter, update)
+    return err
 }
 func (br *blogRepository) DeleteBlog(ctx context.Context, id string) error {
 	collection := br.database.Collection(br.collection)
@@ -79,9 +122,32 @@ func (br *blogRepository) DeleteBlog(ctx context.Context, id string) error {
 }
 
 // Blog Listing
-func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int) ([]*domain.Blog, error) {
-	// TODO: implement this function
-	return nil, nil
+func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int) ([]*domain.Blog,int64, error) {
+	collection := br.database.Collection(br.collection)
+	skip := int64((page - 1) * limit)
+	lim := int64(limit)
+	findOptions := options.Find()
+	findOptions.SetSkip(skip)
+	findOptions.SetLimit(lim)
+	cursor, err := collection.Find(ctx, bson.M{}, findOptions)
+	if err != nil {
+		return nil,0, err
+	}
+	defer cursor.Close(ctx)
+	var blogResDTOs []BlogResponseDTO
+	if err = cursor.All(ctx, &blogResDTOs); err != nil {
+		return nil, 0, err
+	}
+	blogs := make([]*domain.Blog, len(blogResDTOs))
+	for i, dto := range blogResDTOs {
+		blogs[i] = DtoToDomain(&dto)
+	}
+	total, err := collection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return blogs, total, nil
 }
 func (br *blogRepository) ListBlogsByAuthor(ctx context.Context, authorID string) ([]*domain.Blog, error) {
 	collection := br.database.Collection(br.collection)
@@ -133,8 +199,19 @@ func (br *blogRepository) SearchBlogs(ctx context.Context, query string) ([]*dom
 
 // Blog Metrics
 func (br *blogRepository) GetBlogMetrics(ctx context.Context, blogID string) (*domain.BlogMetrics, error) {
-	// TODO: implement this function
-	return nil, nil
+	collection := br.database.Collection("blog_metrics")
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil{
+		return nil, err
+	}
+	filter := bson.M{"blog_id": oid}
+	var blog_metrics BlogMetricsDTO
+	err = collection.FindOne(ctx, filter).Decode(&blog_metrics)
+	if err != nil {
+		return nil, err
+	}
+
+	return BlogMetricsDtoToDomain(&blog_metrics), nil
 }
 func (br *blogRepository) IncrementViewCount(ctx context.Context, blogID string) error {
 	// TODO: implement this function
@@ -158,7 +235,6 @@ func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (
 	return count > 0, nil
 }
 
-// DTOs
 
 type BlogMetricsDTO struct {
 	BlogID       bson.ObjectID `bson:"blog_id"`
@@ -212,5 +288,15 @@ func DtoToDomain(blogDTO *BlogResponseDTO) *domain.Blog {
 		Tags:      blogDTO.Tags,
 		CreatedAt: blogDTO.CreatedAt,
 		UpdatedAt: blogDTO.UpdatedAt,
+	}
+}
+
+func BlogMetricsDtoToDomain(dto *BlogMetricsDTO) *domain.BlogMetrics {
+	return &domain.BlogMetrics{
+		BlogID:       dto.BlogID.Hex(),
+		ViewCount:    dto.ViewCount,
+		LikeCount:    dto.LikeCount,
+		DislikeCount: dto.DislikeCount,
+		CommentCount: dto.CommentCount,
 	}
 }
