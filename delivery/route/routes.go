@@ -31,7 +31,7 @@ func NewAuthRouter(handler *controller.AuthController, group *gin.RouterGroup) {
 	group.POST("/auth/register", handler.Register)
 	group.POST("/auth/login", handler.Login )
 	group.POST("/auth/logout", handler.Logout)
-	group.POST("/auth/refresh-token", )
+	group.POST("/auth/refresh-token", handler.RefreshToken)
 	group.POST("/auth/forgot-password", handler.ForgotPassword )
 	group.POST("/auth/reset-password",handler.ResetPassword)
 	group.POST("/auth/refresh", handler.RefreshToken)
