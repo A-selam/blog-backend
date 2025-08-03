@@ -4,7 +4,6 @@ import (
 	"blog-backend/domain"
 	"context"
 	"fmt"
-	"log"
 	"time"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
