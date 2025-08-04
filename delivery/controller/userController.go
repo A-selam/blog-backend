@@ -64,3 +64,34 @@ func (uc *UserController) UpdateCurrentUserProfile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "User profile updated successfully."})
 }
+func (uc *UserController) PromoteUser(c *gin.Context){
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required."})
+		return
+	}
+
+	err := uc.UserUseCase.PromoteToAdmin(c, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to promote user."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User promoted successfully."})
+}
+
+func (uc *UserController) DemoteUser(c *gin.Context){
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required."})
+		return
+	}
+
+	err := uc.UserUseCase.DemoteToUser(c, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to demote user."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User demoted successfully."})
+}

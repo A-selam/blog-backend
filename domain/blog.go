@@ -52,11 +52,11 @@ type IBlogRepository interface {
 	// Blog CRUD
 	CreateBlog(ctx context.Context, blog *Blog) (*Blog, error)
 	GetBlogByID(ctx context.Context, id string) (*Blog, error)
-	UpdateBlog(ctx context.Context, id string, updates map[string]interface{}) error
+	UpdateBlog(ctx context.Context, id string, userID string, updates map[string]interface{}) (error)
 	DeleteBlog(ctx context.Context, id string) error
 
 	// Blog Listing
-	ListBlogs(ctx context.Context, page, limit int) ([]*Blog, error)
+	ListBlogs(ctx context.Context, page, limit int) ([]*Blog,int64, error)
 	ListBlogsByAuthor(ctx context.Context, authorID string) ([]*Blog, error)
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
 
@@ -85,9 +85,9 @@ type ICommentRepository interface {
 type IBlogUseCase interface {
 	CreateBlog(ctx context.Context, blog *Blog) (*Blog, error)
 	GetBlog(ctx context.Context, blogID string) (*Blog, *BlogMetrics, error)
-	UpdateBlog(ctx context.Context, blogID string, updates map[string]interface{}) error
+	UpdateBlog(ctx context.Context, blogID,userIDStr string, updates map[string]interface{}) error
 	DeleteBlog(ctx context.Context, blogID string) error
-	ListBlogs(ctx context.Context, page, limit int) ([]*Blog, error)
+	ListBlogs(ctx context.Context, page, limit int) ([]*Blog,int64, error)
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
 	IsBlogAuthor(ctx context.Context, blogID, userID string) (bool, error)
 	GetBlogsByUserID(ctx context.Context, userID string) ([]*Blog, error)

@@ -55,12 +55,26 @@ func (uu *userUsecase) UpdateProfile(ctx context.Context, userID string, updates
 }
 
 // Admin Only
-func (uu *userUsecase) PromoteToAdmin(ctx context.Context, adminID, targetUserID string) error {
-	// TODO: implement this function
+func (uu *userUsecase) PromoteToAdmin(ctx context.Context, targetUserID string) error {
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
+	defer cancel()
+
+	err := uu.userRepository.PromoteToAdmin(ctx, targetUserID)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (uu *userUsecase) DemoteToUser(ctx context.Context, adminID, targetUserID string) error {
-	// TODO: implement this function
+func (uu *userUsecase) DemoteToUser(ctx context.Context, targetUserID string) error {
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
+	defer cancel()
+
+	err := uu.userRepository.DemoteToUser(ctx, targetUserID)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

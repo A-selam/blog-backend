@@ -138,12 +138,40 @@ func (ur userRepository) UpdateProfile(ctx context.Context, userID string, bio, 
 
 // Admin Actions
 func (ur userRepository) PromoteToAdmin(ctx context.Context, userID string) error {
-	// TODO: Implement the function
+	collection := ur.database.Collection(ur.collection)
+
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user ID: %v", err)
+	}
+
+	filter := bson.D{{Key: "_id", Value: oid}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "role", Value: string(domain.Admin)}}}}
+
+	updateResult, err := collection.UpdateOne(ctx, filter, update)
+	if err != nil || updateResult.MatchedCount == 0 { 
+		return fmt.Errorf("failed to promote user to admin: %v", err)
+	}
+
 	return nil
 }
 
 func (ur userRepository) DemoteToUser(ctx context.Context, userID string) error {
-	// TODO: Implement the function
+	collection := ur.database.Collection(ur.collection)
+
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user ID: %v", err)
+	}
+
+	filter := bson.D{{Key: "_id", Value: oid}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "role", Value: string(domain.RegularUser)}}}}
+
+	updateResult, err := collection.UpdateOne(ctx, filter, update)
+	if err != nil || updateResult.MatchedCount == 0 { 
+		return fmt.Errorf("failed to demote user to admin: %v", err)
+	}
+
 	return nil
 }
 

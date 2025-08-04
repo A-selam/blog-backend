@@ -55,6 +55,6 @@ type IUserUseCase interface {
 	UpdateProfile(ctx context.Context, userID string, updates map[string]interface{}) error
 
 	// Admin Only
-	PromoteToAdmin(ctx context.Context, adminID, targetUserID string) error
-	DemoteToUser(ctx context.Context, adminID, targetUserID string) error
+	PromoteToAdmin(ctx context.Context, targetUserID string) error
+	DemoteToUser(ctx context.Context, targetUserID string) error
 }

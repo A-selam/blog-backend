@@ -3,7 +3,7 @@ package controller
 import (
 	"blog-backend/domain"
 	"net/http"
-
+	"strconv"
 	"github.com/gin-gonic/gin"
 )
 
@@ -92,6 +92,83 @@ func (bc *BlogController) GetBlogsByUserID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"blogs": blogs})
 }
+
+func (bc *BlogController) ListBlogs(c *gin.Context) {
+	p := c.Query("page")
+	l := c.Query("limit")
+	page, err := strconv.Atoi(p)
+	if err != nil || p == "" {
+		page = 1
+	}
+	limit, err := strconv.Atoi(l)
+	if err != nil || l == "" {
+		limit = 10
+	}
+	blogs, total, err := bc.BlogUseCase.ListBlogs(c, page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch blogs."})
+		return
+	}
+	totalPages := (total + int64(limit) - 1) / int64(limit)
+
+	c.JSON(http.StatusOK, gin.H{"blogs": blogs, "total": totalPages, "page": page, "limit": limit})
+}
+
+func (bc *BlogController) GetBlog(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(400, gin.H{"error": "Blog ID is required."})
+	}
+	blog, metrics, err := bc.BlogUseCase.GetBlog(c, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch blog."})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"blog": blog, "metrics": metrics})
+}
+
+func (bc *BlogController) UpdateBlog(c *gin.Context) {
+	id := c.Param("id")
+	var updates BlogUpdateDTO
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid entry"})
+	}
+	if id == "" {
+		c.JSON(400, gin.H{"error": "Blog ID is required."})
+	}
+	updatesMap := map[string]interface{}{}
+	if updates.Title != nil {
+		updatesMap["title"] = *updates.Title
+	}
+	if updates.Content != nil {
+		updatesMap["content"] = *updates.Content
+	}
+	if updates.Tags != nil {
+		updatesMap["tags"] = *updates.Tags
+	}
+	userID, exists := c.Get("x-user-id")
+	if !exists {
+		c.JSON(400, gin.H{"error": "No user ID found"})
+		return
+	}
+	userIDStr, ok := userID.(string)
+	if !ok {
+		c.JSON(400, gin.H{"error": "Invalid user ID type"})
+		return
+	}
+	if len(updatesMap) == 0 {
+		c.JSON(400, gin.H{"error": "No fields to update."})
+		return
+	}
+
+	err := bc.BlogUseCase.UpdateBlog(c, id, userIDStr, updatesMap)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update blog."})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Blog updated successfully."})
+
+}
 // DTOs
 
 type BlogDTO struct {
@@ -107,4 +184,9 @@ func DtoToDomain(blogDTO *BlogDTO, authorID string) *domain.Blog {
 		AuthorID: authorID,
 		Tags:     blogDTO.Tags,
 	}
+}
+type BlogUpdateDTO struct {
+	Title   *string   `json:"title,omitempty"`
+	Content *string   `json:"content,omitempty"`
+	Tags    *[]string `json:"tags,omitempty"`
 }
