@@ -118,13 +118,30 @@ func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string
 
 // Comments
 func (bu *blogUsecase) AddComment(ctx context.Context, blogID, authorID string, content string) (*domain.Comment, error) {
-	// TODO: implement this function
-	return nil, nil
+	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
+	defer cancel()
+	comment := &domain.Comment{
+		BlogID:    blogID,
+		AuthorID:  authorID,
+		Content:   content,
+		CreatedAt: time.Now(),
+	}
+
+	res, err := bu.blogCommentRepository.AddComment(ctx, comment)
+	if err != nil{
+		return nil, err
+	}
+	return res, nil
 }
 
 func (bu *blogUsecase) GetComments(ctx context.Context, blogID string) ([]*domain.Comment, error) {
-	// TODO: implement this function
-	return nil, nil
+	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
+	defer cancel()
+	comments, err := bu.blogCommentRepository.GetCommentsForBlog(ctx, blogID)
+	if err != nil {
+		return nil, err
+	}
+	return comments, nil
 }
 func (bu *blogUsecase) GetBlogsByUserID(ctx context.Context, userID string) ([]*domain.Blog, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)

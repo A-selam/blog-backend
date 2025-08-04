@@ -48,7 +48,7 @@ func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 	group.GET("/blog/user/:id", handler.GetBlogsByUserID)
 	group.GET("/blogs/:id", handler.GetBlog)
 	group.GET("/blogs/search", handler.SearchBlogs)
-	group.GET("/blogs/:id/comments", )
+	group.GET("/blogs/:id/comments", handler.ListAllComments)
 	group.GET("/blogs/:id/metrics", )
 }
 
@@ -58,8 +58,8 @@ func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGrou
 	group.DELETE("/blogs/:id", handler.DeleteBlog)
 	group.POST("/blogs/:id/like", )
 	group.POST("/blogs/:id/dislike", )
-	group.DELETE("/blogs/:id/reaction", )
-	group.POST("/blogs/:id/comments", )
+	group.DELETE("/blogs/:id/reaction", handler.RemoveReaction )
+	group.POST("/blogs/:id/comments", handler.CreateComment)
 }
 
 func NewAdminRouter(userHandler *controller.UserController, blogHandler *controller.BlogController, group *gin.RouterGroup) {
