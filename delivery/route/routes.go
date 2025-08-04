@@ -49,15 +49,15 @@ func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 	group.GET("/blogs/:id", handler.GetBlog)
 	group.GET("/blogs/search", handler.SearchBlogs)
 	group.GET("/blogs/:id/comments", )
-	group.GET("/blogs/:id/metrics", )
+	group.GET("/blogs/:id/metrics", handler.GetBlogMetrics)
 }
 
 func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 	group.POST("/blogs", handler.CreateBlog)
 	group.PATCH("/blogs/:id",handler.UpdateBlog )
 	group.DELETE("/blogs/:id", handler.DeleteBlog)
-	group.POST("/blogs/:id/like", )
-	group.POST("/blogs/:id/dislike", )
+	group.POST("/blogs/:id/like", handler.LikeBlog)
+	group.POST("/blogs/:id/dislike", handler.DislikeBlog)
 	group.DELETE("/blogs/:id/reaction", )
 	group.POST("/blogs/:id/comments", )
 }

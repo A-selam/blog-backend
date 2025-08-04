@@ -4,6 +4,7 @@ import (
 	"blog-backend/domain"
 	"net/http"
 	"strconv"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -168,6 +169,66 @@ func (bc *BlogController) UpdateBlog(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Blog updated successfully."})
 
+}
+
+func (bc *BlogController) GetBlogMetrics(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(400, gin.H{"error": "Blog ID is required."})
+		return
+	}
+	
+	metrics, err := bc.BlogUseCase.GetBlogMetrics(c, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch blog metrics."})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{"metrics": metrics})
+}
+
+func (bc *BlogController) LikeBlog(c *gin.Context) {
+	blogID := c.Param("id")
+	if blogID == "" {
+		c.JSON(400, gin.H{"error": "Blog ID is required."})
+		return
+	}
+
+	userID, exists := c.Get("x-user-id")
+	if !exists {
+		c.JSON(400, gin.H{"error": "User ID not found in context"})
+		return
+	}
+
+	err := bc.BlogUseCase.AddReaction(c, blogID, userID.(string), string(domain.Like))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add reaction."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Reaction added successfully."})
+}
+
+func (bc *BlogController) DislikeBlog(c *gin.Context) {
+	blogID := c.Param("id")
+	if blogID == "" {
+		c.JSON(400, gin.H{"error": "Blog ID is required."})
+		return
+	}
+
+	userID, exists := c.Get("x-user-id")
+	if !exists {
+		c.JSON(400, gin.H{"error": "User ID not found in context"})
+		return
+	}
+
+	err := bc.BlogUseCase.AddReaction(c, blogID, userID.(string), string(domain.Dislike))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add reaction."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Reaction added successfully."})
 }
 
 type BlogDTO struct {

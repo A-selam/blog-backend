@@ -218,6 +218,78 @@ func (br *blogRepository) IncrementViewCount(ctx context.Context, blogID string)
 	return nil
 }
 
+func (br *blogRepository) IncrementLikeCount(ctx context.Context, blogID string) error {
+	collection := br.database.Collection("blog_metrics")
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{{Key: "blog_id", Value: oid}}
+	update := bson.D{{Key: "$inc", Value: bson.D{{Key: "like_count", Value: 1}}}}
+	
+	_, err = collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (br *blogRepository) DecrementLikeCount(ctx context.Context, blogID string) error {
+	collection := br.database.Collection("blog_metrics")
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{{Key: "blog_id", Value: oid}}
+	update := bson.D{{Key: "$dec", Value: bson.D{{Key: "like_count", Value: 1}}}}
+	
+	_, err = collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (br *blogRepository) IncrementDislikeCount(ctx context.Context, blogID string) error {
+	collection := br.database.Collection("blog_metrics")
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{{Key: "blog_id", Value: oid}}
+	update := bson.D{{Key: "$inc", Value: bson.D{{Key: "like_count", Value: 1}}}}
+	
+	_, err = collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (br *blogRepository) DecrementDislikeCount(ctx context.Context, blogID string) error {
+	collection := br.database.Collection("blog_metrics")
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{{Key: "blog_id", Value: oid}}
+	update := bson.D{{Key: "$dec", Value: bson.D{{Key: "like_count", Value: 1}}}}
+	
+	_, err = collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // i added this function because we didn't have a function that evaluate blog authers k
 func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (bool, error) {
 	collection := br.database.Collection(br.collection)

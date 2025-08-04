@@ -3,6 +3,7 @@ package usecase
 import (
 	"blog-backend/domain"
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -98,7 +99,64 @@ func (bu *blogUsecase) SearchBlogs(ctx context.Context, query string) ([]*domain
 
 // Reactions
 func (bu *blogUsecase) AddReaction(ctx context.Context, blogID, userID string, reactionType string) error {
-	// TODO: implement this function
+	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
+	defer cancel()
+
+	reaction := &domain.Reaction{
+		BlogID: blogID,
+		UserID: userID,
+		Type:   domain.ReactionType(reactionType),
+		CreatedAt: time.Now(),
+	}
+
+	rxn, noReaction, err := bu.blogReactionRepository.CheckReactionExists(ctx, blogID, userID)
+	if err != nil {
+		return err
+	}
+	
+	if noReaction {
+		err = bu.blogReactionRepository.AddReaction(ctx, reaction)
+		if err != nil {
+			return err
+		}
+		// increment the count of the reaction type
+		if reactionType == string(domain.Like) {
+			err = bu.blogRepository.IncrementLikeCount(ctx, blogID)
+			} else if reactionType == string(domain.Dislike) {
+				err = bu.blogRepository.IncrementDislikeCount(ctx, blogID)
+			}
+			if err != nil {
+				return err
+				} 
+				} else {
+					if string(rxn.Type) != reactionType {
+						err = bu.blogReactionRepository.UpdateReaction(ctx, blogID, userID, domain.ReactionType(reactionType))
+						if err != nil {
+				fmt.Println(err)
+				return err
+			} 
+		}
+		if reactionType == string(domain.Like) {
+			err = bu.blogRepository.IncrementLikeCount(ctx, blogID)
+			if err != nil {
+				return err
+			} 
+			err = bu.blogRepository.DecrementDislikeCount(ctx, blogID)
+			if err != nil {
+				return err
+			} 
+		} else if reactionType == string(domain.Dislike) {
+			err = bu.blogRepository.IncrementDislikeCount(ctx, blogID)
+			if err != nil {
+				return err
+			} 
+			err = bu.blogRepository.DecrementLikeCount(ctx, blogID)
+			if err != nil {
+				return err
+			} 
+		}
+	}
+
 	return nil
 }
 
@@ -136,4 +194,16 @@ func (bu *blogUsecase) IsBlogAuthor(ctx context.Context, blogID, userID string) 
 		return false, err
 	}
 	return isAuthor, nil
+}
+
+func (bu *blogUsecase) GetBlogMetrics(ctx context.Context, blogID string) (*domain.BlogMetrics, error) {
+	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
+	defer cancel()
+
+	metrics, err := bu.blogRepository.GetBlogMetrics(ctx, blogID)
+	if err != nil {
+		return nil, err
+	}
+
+	return metrics, nil
 }

@@ -64,7 +64,12 @@ type IBlogRepository interface {
 	BlogMetricsInitializer(ctx context.Context, blogID string) error
 	GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
 	IncrementViewCount(ctx context.Context, blogID string) error
-	//Blog autherization
+	IncrementLikeCount(ctx context.Context, blogID string) error
+	IncrementDislikeCount(ctx context.Context, blogID string) error
+	DecrementLikeCount(ctx context.Context, blogID string) error
+	DecrementDislikeCount(ctx context.Context, blogID string) error
+	
+	//Blog authorization
 	IsAuthor(ctx context.Context, blogID, userID string) (bool, error)
 }
 
@@ -73,6 +78,8 @@ type IReactionRepository interface {
 	AddReaction(ctx context.Context, reaction *Reaction) error
 	RemoveReaction(ctx context.Context, blogID, userID string) error
 	GetReactionsForBlog(ctx context.Context, blogID string) ([]*Reaction, error)
+	CheckReactionExists(ctx context.Context, blogID, userID string) (*Reaction, bool, error)
+	UpdateReaction(ctx context.Context, blogID, userID string, reactionType ReactionType) error
 }
 
 type ICommentRepository interface {
@@ -91,6 +98,8 @@ type IBlogUseCase interface {
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
 	IsBlogAuthor(ctx context.Context, blogID, userID string) (bool, error)
 	GetBlogsByUserID(ctx context.Context, userID string) ([]*Blog, error)
+	GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
+	
 	// Reactions
 	AddReaction(ctx context.Context, blogID, userID string, reactionType string) error
 	RemoveReaction(ctx context.Context, blogID, userID string) error
