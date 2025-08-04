@@ -10,6 +10,7 @@ type blogUsecase struct {
 	blogRepository         domain.IBlogRepository
 	blogReactionRepository domain.IReactionRepository
 	blogCommentRepository  domain.ICommentRepository
+	blogMetricsRepository  domain.IBlogMetricsRepository
 	contextTimeout         time.Duration
 }
 
@@ -18,8 +19,10 @@ func NewBlogUsecase(
 	blogReactionRepository domain.IReactionRepository,
 	blogCommentRepository domain.ICommentRepository,
 	timeout time.Duration,
+	blogMetricsRepository domain.IBlogMetricsRepository,
 ) domain.IBlogUseCase {
 	return &blogUsecase{
+		blogMetricsRepository: blogMetricsRepository,
 		blogRepository:         blogRepository,
 		blogReactionRepository: blogReactionRepository,
 		blogCommentRepository:  blogCommentRepository,
@@ -38,7 +41,7 @@ func (bu *blogUsecase) CreateBlog(ctx context.Context, blog *domain.Blog) (*doma
 	}
 
 	// Initialize blog metrics
-	err = bu.blogRepository.BlogMetricsInitializer(ctx, createdBlog.ID)
+	err = bu.blogMetricsRepository.BlogMetricsInitializer(ctx, createdBlog.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +56,7 @@ func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog
 	if err != nil{
 		return nil, nil, err
 	}
-	metric, err := bu.blogRepository.GetBlogMetrics(ctx, blogID)
+	metric, err := bu.blogMetricsRepository.GetBlogMetrics(ctx, blogID)
 	if err != nil{
 		return nil, nil, err
 	}
@@ -103,8 +106,14 @@ func (bu *blogUsecase) AddReaction(ctx context.Context, blogID, userID string, r
 }
 
 func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string) error {
-	// TODO: implement this function
-	return nil
+	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
+	defer cancel()
+	err := bu.blogReactionRepository.RemoveReaction(ctx, blogID, userID)
+	if err != nil {
+		return err
+	}
+	err = bu.blogMetricsRepository.UpdateBlogMetrics(ctx, blogID, "reactions", -1)
+	return err
 }
 
 // Comments

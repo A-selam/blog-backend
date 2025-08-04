@@ -169,6 +169,23 @@ func (bc *BlogController) UpdateBlog(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Blog updated successfully."})
 
 }
+func (bc *BlogController) RemoveReaction(c *gin.Context) {
+	blogID := c.Param("id")
+	userID, exists := c.Get("x-user-id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+
+	err := bc.BlogUseCase.RemoveReaction(c, blogID, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove reaction", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Reaction removed successfully"})
+}
+
 
 type BlogDTO struct {
 	Title   string   `json:"title" binding:"required"`

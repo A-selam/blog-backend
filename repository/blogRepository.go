@@ -12,6 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
+type blogMetricsRepository struct {
+	database   *mongo.Database
+	collection string
+}
+
+
 type blogRepository struct {
 	database   *mongo.Database
 	collection string
@@ -24,6 +30,12 @@ func NewBlogRepositoryFromDB(db *mongo.Database) domain.IBlogRepository {
 	}
 }
 
+func NewBlogMetricsRepositoryFromDB(db *mongo.Database) domain.IBlogMetricsRepository {
+	return &blogMetricsRepository{	
+		database:   db,
+		collection: "blog_metrics",
+	}
+}
 // Blog CRUD
 func (br *blogRepository) CreateBlog(ctx context.Context, blog *domain.Blog) (*domain.Blog, error) {
 	collection := br.database.Collection(br.collection)
@@ -43,8 +55,8 @@ func (br *blogRepository) CreateBlog(ctx context.Context, blog *domain.Blog) (*d
 	return blog, nil
 }
 
-func (br *blogRepository) BlogMetricsInitializer(ctx context.Context, blogID string) error {
-	collection := br.database.Collection("blog_metrics")
+func (bmr *blogMetricsRepository) BlogMetricsInitializer(ctx context.Context, blogID string) error {
+	collection := bmr.database.Collection(bmr.collection)
 
 	id, err := bson.ObjectIDFromHex(blogID)
 	if err != nil {
@@ -198,8 +210,8 @@ func (br *blogRepository) SearchBlogs(ctx context.Context, query string) ([]*dom
 }
 
 // Blog Metrics
-func (br *blogRepository) GetBlogMetrics(ctx context.Context, blogID string) (*domain.BlogMetrics, error) {
-	collection := br.database.Collection("blog_metrics")
+func (bmr *blogMetricsRepository) GetBlogMetrics(ctx context.Context, blogID string) (*domain.BlogMetrics, error) {
+	collection := bmr.database.Collection(bmr.collection)
 	oid, err := bson.ObjectIDFromHex(blogID)
 	if err != nil{
 		return nil, err
@@ -213,7 +225,19 @@ func (br *blogRepository) GetBlogMetrics(ctx context.Context, blogID string) (*d
 
 	return BlogMetricsDtoToDomain(&blog_metrics), nil
 }
-func (br *blogRepository) IncrementViewCount(ctx context.Context, blogID string) error {
+
+func (bmr *blogMetricsRepository) UpdateBlogMetrics(ctx context.Context, blogID string, field string, reaction int) error {
+	collection := bmr.database.Collection(bmr.collection)
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return err
+	}
+	filter := bson.M{"blog_id": oid}
+	updates := bson.M{"$inc": bson.M{field: reaction}}
+	_, err = collection.UpdateOne(ctx, filter, updates)
+	return err
+}
+func (bmr *blogMetricsRepository) IncrementViewCount(ctx context.Context, blogID string) error {
 	// TODO: implement this function
 	return nil
 }

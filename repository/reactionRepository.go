@@ -4,6 +4,7 @@ import (
 	"blog-backend/domain"
 	"context"
 
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -25,8 +26,19 @@ func (rr *reactionRepository) AddReaction(ctx context.Context, reaction *domain.
 }
 
 func (rr *reactionRepository) RemoveReaction(ctx context.Context, blogID, userID string) error {
-	// TODO: implement this function
-	return nil
+	collection := rr.database.Collection(rr.collection)
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil{
+		return err
+	}
+	uid, err := bson.ObjectIDFromHex(userID)
+	if err != nil{
+		return err
+	}
+	filter := bson.M{"blog_id": oid,"user_id": uid}
+	_, err = collection.DeleteOne(ctx, filter)
+
+	return err
 }
 
 func (rr *reactionRepository) GetReactionsForBlog(ctx context.Context, blogID string) ([]*domain.Reaction, error) {

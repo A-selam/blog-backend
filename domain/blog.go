@@ -48,8 +48,17 @@ type Reaction struct {
     CreatedAt time.Time          
 }
 
+type IBlogMetricsRepository interface {
+	// Blog Metrics	
+	BlogMetricsInitializer(ctx context.Context, blogID string) error
+	GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
+	UpdateBlogMetrics(ctx context.Context, blogID string, field string, increment int) error
+	IncrementViewCount(ctx context.Context, blogID string) error
+}
+
 type IBlogRepository interface {
 	// Blog CRUD
+	IsAuthor(ctx context.Context, blogID, userID string) (bool, error)
 	CreateBlog(ctx context.Context, blog *Blog) (*Blog, error)
 	GetBlogByID(ctx context.Context, id string) (*Blog, error)
 	UpdateBlog(ctx context.Context, blogID string, userID string, updates map[string]interface{}) error
@@ -60,12 +69,6 @@ type IBlogRepository interface {
 	ListBlogsByAuthor(ctx context.Context, authorID string) ([]*Blog, error)
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
 
-	// Blog Metrics
-	BlogMetricsInitializer(ctx context.Context, blogID string) error
-	GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
-	IncrementViewCount(ctx context.Context, blogID string) error
-	//Blog autherization
-	IsAuthor(ctx context.Context, blogID, userID string) (bool, error)
 }
 
 type IReactionRepository interface {
