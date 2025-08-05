@@ -14,6 +14,7 @@ type refreshTokenRepository struct {
 	collection string
 }
 
+
 func NewRefreshTokenRepositoryFromDB(db *mongo.Database) domain.IRefreshTokenRepository {
 	return &refreshTokenRepository{
 		database:   db,
@@ -81,12 +82,25 @@ func (tr *refreshTokenRepository) GetRefreshToken(ctx context.Context, token str
 }
 
 func (tr *refreshTokenRepository) DeleteRefreshToken(ctx context.Context, token string) error {
-	// TODO: implement this function
+	res, err := tr.database.Collection(tr.collection).DeleteOne(ctx,bson.M{"token": token})
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0{
+		return domain.ErrTokenNotFound
+	}
 	return nil
 }
 
 func (tr *refreshTokenRepository) DeleteRefreshTokensForUser(ctx context.Context, userID string) error {
-	// TODO: implement this function
+
+	res, err := tr.database.Collection(tr.collection).DeleteMany(ctx, bson.M{"user_id": userID})
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0{
+		return domain.ErrTokenNotFound
+	}
 	return nil
 }
 
@@ -96,26 +110,64 @@ type resetTokenRepository struct {
 }
 
 func NewResetTokenRepository(db *mongo.Database) domain.IResetTokenRepository {
-	return &resetTokenRepository{
-		database:   db,
-		collection: "refreshTokens",
-	}
+    return &resetTokenRepository{
+        database:   db,
+        collection: "passwordResetTokens", 
+    }
 }
 
-// Password Reset Tokens
 func (tr *resetTokenRepository) CreatePasswordResetToken(ctx context.Context, token *domain.PasswordResetToken) (*domain.PasswordResetToken, error) {
-	// TODO: implement this function
-	return nil, nil
+    if token.CreatedAt.IsZero() {
+        token.CreatedAt = time.Now()
+    }
+    if !token.Used {
+        token.Used = false
+    }
+
+    _, err := tr.database.Collection(tr.collection).InsertOne(ctx, token)
+    if err != nil {
+        return nil, err
+    }
+    return token, nil
 }
 
 func (tr *resetTokenRepository) GetPasswordResetToken(ctx context.Context, token string) (*domain.PasswordResetToken, error) {
-	// TODO: implement this function
-	return nil, nil
+    var result domain.PasswordResetToken
+    err := tr.database.Collection(tr.collection).FindOne(ctx, bson.M{"token": token}).Decode(&result)
+    if err == mongo.ErrNoDocuments {
+        return nil, domain.ErrTokenNotFound
+    }
+    if err != nil {
+        return nil, err
+    }
+    
+    if result.Used {
+        return nil, domain.ErrTokenUsed
+    }
+    
+    if !result.ExpiresAt.IsZero() && result.ExpiresAt.Before(time.Now()) {
+        return nil, domain.ErrTokenExpired
+    }
+    
+    return &result, nil
 }
 
 func (tr *resetTokenRepository) MarkPasswordResetTokenUsed(ctx context.Context, token string) error {
-	// TODO: implement this function
-	return nil
+    update := bson.M{
+        "$set": bson.M{
+            "used":      true,
+            "updatedAt": time.Now(),
+        },
+    }
+    
+    result, err := tr.database.Collection(tr.collection).UpdateOne(ctx, bson.M{"token": token}, update)
+    if err != nil {
+        return err
+    }
+    if result.MatchedCount == 0 {
+        return domain.ErrTokenNotFound
+    }
+    return nil
 }
 
 type refreshTokenDTO struct {
@@ -134,7 +186,7 @@ func refreshToken(userID, token string) (*refreshTokenDTO, error) {
 	return &refreshTokenDTO{
 		Token:     token,
 		UserID:    oid,
-		ExpiresAt: time.Now().Add(7 * 24 * time.Hour), // Example expiration time
+		ExpiresAt: time.Now().Add(7 * 24 * time.Hour), 
 		CreatedAt: time.Now(),
 	}, nil
 }

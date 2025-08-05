@@ -3,13 +3,20 @@ package repository
 import (
 	"blog-backend/domain"
 	"context"
-	"time"
 	"fmt"
 	"log"
+	"time"
+
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+type blogMetricsRepository struct {
+	database   *mongo.Database
+	collection string
+}
+
 
 type blogRepository struct {
 	database   *mongo.Database
@@ -23,6 +30,12 @@ func NewBlogRepositoryFromDB(db *mongo.Database) domain.IBlogRepository {
 	}
 }
 
+func NewBlogMetricsRepositoryFromDB(db *mongo.Database) domain.IBlogMetricsRepository {
+	return &blogMetricsRepository{	
+		database:   db,
+		collection: "blog_metrics",
+	}
+}
 // Blog CRUD
 func (br *blogRepository) CreateBlog(ctx context.Context, blog *domain.Blog) (*domain.Blog, error) {
 	collection := br.database.Collection(br.collection)
@@ -42,8 +55,8 @@ func (br *blogRepository) CreateBlog(ctx context.Context, blog *domain.Blog) (*d
 	return blog, nil
 }
 
-func (br *blogRepository) BlogMetricsInitializer(ctx context.Context, blogID string) error {
-	collection := br.database.Collection("blog_metrics")
+func (bmr *blogMetricsRepository) BlogMetricsInitializer(ctx context.Context, blogID string) error {
+	collection := bmr.database.Collection(bmr.collection)
 
 	id, err := bson.ObjectIDFromHex(blogID)
 	if err != nil {
@@ -203,12 +216,108 @@ func (br *blogRepository) SearchBlogs(ctx context.Context, query string) ([]*dom
 }
 
 // Blog Metrics
-func (br *blogRepository) GetBlogMetrics(ctx context.Context, blogID string) (*domain.BlogMetrics, error) {
-	// TODO: implement this function
-	return nil, nil
+func (bmr *blogMetricsRepository) GetBlogMetrics(ctx context.Context, blogID string) (*domain.BlogMetrics, error) {
+	collection := bmr.database.Collection(bmr.collection)
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil{
+		return nil, err
+	}
+	filter := bson.M{"blog_id": oid}
+	var blog_metrics BlogMetricsDTO
+	err = collection.FindOne(ctx, filter).Decode(&blog_metrics)
+	if err != nil {
+		return nil, err
+	}
+
+	return BlogMetricsDtoToDomain(&blog_metrics), nil
 }
-func (br *blogRepository) IncrementViewCount(ctx context.Context, blogID string) error {
+
+func (bmr *blogMetricsRepository) UpdateBlogMetrics(ctx context.Context, blogID string, field string, reaction int) error {
+	collection := bmr.database.Collection(bmr.collection)
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return err
+	}
+	filter := bson.M{"blog_id": oid}
+	updates := bson.M{"$inc": bson.M{field: reaction}}
+	_, err = collection.UpdateOne(ctx, filter, updates)
+	return err
+}
+
+func (bmr *blogMetricsRepository) IncrementViewCount(ctx context.Context, blogID string) error {
 	// TODO: implement this function
+	return nil
+}
+
+func (br *blogRepository) IncrementLikeCount(ctx context.Context, blogID string) error {
+	collection := br.database.Collection("blog_metrics")
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{{Key: "blog_id", Value: oid}}
+	update := bson.D{{Key: "$inc", Value: bson.D{{Key: "like_count", Value: 1}}}}
+	
+	_, err = collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (br *blogRepository) DecrementLikeCount(ctx context.Context, blogID string) error {
+	collection := br.database.Collection("blog_metrics")
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{{Key: "blog_id", Value: oid}}
+	update := bson.D{{Key: "$dec", Value: bson.D{{Key: "like_count", Value: 1}}}}
+	
+	_, err = collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (br *blogRepository) IncrementDislikeCount(ctx context.Context, blogID string) error {
+	collection := br.database.Collection("blog_metrics")
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{{Key: "blog_id", Value: oid}}
+	update := bson.D{{Key: "$inc", Value: bson.D{{Key: "like_count", Value: 1}}}}
+	
+	_, err = collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (br *blogRepository) DecrementDislikeCount(ctx context.Context, blogID string) error {
+	collection := br.database.Collection("blog_metrics")
+	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{{Key: "blog_id", Value: oid}}
+	update := bson.D{{Key: "$dec", Value: bson.D{{Key: "like_count", Value: 1}}}}
+	
+	_, err = collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -232,7 +341,6 @@ func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (
 	return count > 0, nil
 }
 
-// DTOs
 
 type BlogMetricsDTO struct {
 	BlogID       bson.ObjectID `bson:"blog_id"`
@@ -286,5 +394,15 @@ func DtoToDomain(blogDTO *BlogResponseDTO) *domain.Blog {
 		Tags:      blogDTO.Tags,
 		CreatedAt: blogDTO.CreatedAt,
 		UpdatedAt: blogDTO.UpdatedAt,
+	}
+}
+
+func BlogMetricsDtoToDomain(dto *BlogMetricsDTO) *domain.BlogMetrics {
+	return &domain.BlogMetrics{
+		BlogID:       dto.BlogID.Hex(),
+		ViewCount:    dto.ViewCount,
+		LikeCount:    dto.LikeCount,
+		DislikeCount: dto.DislikeCount,
+		CommentCount: dto.CommentCount,
 	}
 }

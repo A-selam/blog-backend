@@ -130,7 +130,7 @@ func (ac *AuthController) RefreshToken(c *gin.Context) {
 	// 4. Return the new access token (and user info if needed)
 	c.JSON(http.StatusOK, gin.H{
 		"User": loginResponseFromDomain(user),
-		"TokenPair": tokenPair.AccessToken,
+		"Token": tokenPair.AccessToken,
 	})
 }
 
@@ -214,4 +214,65 @@ func emailValidator(email string) error {
 		return fmt.Errorf("invalid email format")
 	}
 	return nil
+}
+
+func (ac *AuthController)Logout(c *gin.Context ) {
+	RefreshToken, err := c.Cookie("refresh_token")
+	if err != nil || RefreshToken == "" {
+		c.JSON(400, gin.H{"error": "Refresh token missing"})
+		return
+	}
+	c.SetCookie("refresh_token", "", -1, "/", "", true, true)
+
+	err = ac.AuthUseCase.Logout(c, RefreshToken)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to logout user."})
+		return
+	}
+	c.JSON(200, gin.H{"message": "User logged out successfully!"})
+}
+
+func (ac *AuthController)ForgotPassword(c *gin.Context) {
+	var request struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request: email is required"})
+		return
+	}
+	token, err := ac.AuthUseCase.ForgotPassword(c, request.Email)
+	if err != nil {	
+		c.JSON(500, gin.H{"error": "Failed to process forgot password request."})
+		return	
+
+	}
+	c.JSON(200, gin.H{"message": "Password reset", "token": token})
+}
+func (ac *AuthController) ResetPassword(c *gin.Context) {
+    var request struct {
+        Password string `json:"password" binding:"required,min=8"`
+        Token    string `json:"token" binding:"required"`
+    }
+    if err := c.ShouldBindJSON(&request); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: token and password (minimum 8 characters) are required"})
+        return
+    }
+
+    err := ac.AuthUseCase.ResetPassword(c, request.Token, request.Password)
+    if err != nil {
+        switch err {
+        case domain.ErrTokenNotFound:
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or unknown reset token"})
+        case domain.ErrTokenUsed:
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Reset token has already been used"})
+        case domain.ErrTokenExpired:
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Reset token has expired"})
+        default:
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process reset password"})
+        }
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})
 }

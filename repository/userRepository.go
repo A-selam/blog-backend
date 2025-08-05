@@ -85,6 +85,7 @@ func (ur userRepository) GetUserByUsernameAndEmail(ctx context.Context, username
 	return DTOToDomain(user), nil
 }
 
+
 func (ur userRepository) UpdateUser(ctx context.Context, id string, updates map[string]interface{}) error {
 	collection := ur.database.Collection(ur.collection)
 	oid, err := bson.ObjectIDFromHex(id)

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -43,3 +44,15 @@ type IResetTokenRepository interface {
 	GetPasswordResetToken(ctx context.Context, token string) (*PasswordResetToken, error)
 	MarkPasswordResetTokenUsed(ctx context.Context, token string) error
 }
+
+var (
+	ErrTokenNotFound = errors.New("token not found")
+	ErrInvalidBlogTitle = errors.New("invalid blog title")
+	ErrInvalidBlogContent = errors.New("invalid blog content")
+	ErrInvalidPasswordResetToken = errors.New("invalid password reset token")
+	ErrPasswordResetTokenExpired = errors.New("password reset token expired")
+	ErrTokenUsed = errors.New("token already used")
+	ErrTokenExpired = errors.New("token expired")
+	
+
+)

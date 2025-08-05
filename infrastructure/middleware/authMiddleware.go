@@ -34,16 +34,16 @@ func NewAuthMiddleware(jwtService domain.IJWTService) gin.HandlerFunc {
 		}
 		// i saved the user id coz i need it for some bunch of me related api's
 		c.Set("x-user-id", userID)
-		c.Set("x-user-role",role)
+		c.Set("x-user-role", role)
 		c.Next()
 	}
 }
 
 func NewAdminMiddleware() gin.HandlerFunc{
-	return func(c *gin.Context) {
-		role, ok := c.Get("x-user-role")
-		if !ok || role.(string) != "admin" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied. Admin privileges required."})
+	return func(c *gin.Context){
+		role, exists := c.Get("x-user-role")
+		if !exists || role != string(domain.Admin) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: Admins only"})
 			c.Abort()
 			return
 		}

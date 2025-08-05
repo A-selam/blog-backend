@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -61,3 +62,12 @@ type IUserUseCase interface {
 	GetUsers(ctx context.Context, page, limit int) ([]*User, int64, error)
 	DeleteUser(ctx context.Context, id string) error
 }
+
+var (
+	ErrInvalidUserID = errors.New("invalid user id")
+	ErrInvalidUser    = errors.New("invalid user")
+	ErrUserNotAuthorized = errors.New("user not authorized")
+	ErrUserNotFound    = errors.New("user not found")
+	ErrUserAlreadyExists = errors.New("user already exists")
+
+)
