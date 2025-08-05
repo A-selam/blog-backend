@@ -130,7 +130,7 @@ func (ac *AuthController) RefreshToken(c *gin.Context) {
 	// 4. Return the new access token (and user info if needed)
 	c.JSON(http.StatusOK, gin.H{
 		"User": loginResponseFromDomain(user),
-		"TokenPair": tokenPair.AccessToken,
+		"Token": tokenPair.AccessToken,
 	})
 }
 

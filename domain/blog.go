@@ -48,8 +48,24 @@ type Reaction struct {
     CreatedAt time.Time          
 }
 
+type UpdateMetricsField string 
+
+const (
+	LikeCountField    UpdateMetricsField = "like_count"
+	DislikeCountField UpdateMetricsField = "dislike_count"
+)
+
+type IBlogMetricsRepository interface {
+	// Blog Metrics	
+	BlogMetricsInitializer(ctx context.Context, blogID string) error
+	GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
+	UpdateBlogMetrics(ctx context.Context, blogID string, field string, increment int) error
+	IncrementViewCount(ctx context.Context, blogID string) error
+}
+
 type IBlogRepository interface {
 	// Blog CRUD
+	// IsAuthor(ctx context.Context, blogID, userID string) (bool, error)
 	CreateBlog(ctx context.Context, blog *Blog) (*Blog, error)
 	GetBlogByID(ctx context.Context, id string) (*Blog, error)
 	UpdateBlog(ctx context.Context, blogID string, userID string, updates map[string]interface{}) error
@@ -60,15 +76,6 @@ type IBlogRepository interface {
 	ListBlogsByAuthor(ctx context.Context, authorID string) ([]*Blog, error)
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
 
-	// Blog Metrics
-	BlogMetricsInitializer(ctx context.Context, blogID string) error
-	GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
-	IncrementViewCount(ctx context.Context, blogID string) error
-	IncrementLikeCount(ctx context.Context, blogID string) error
-	IncrementDislikeCount(ctx context.Context, blogID string) error
-	DecrementLikeCount(ctx context.Context, blogID string) error
-	DecrementDislikeCount(ctx context.Context, blogID string) error
-	
 	//Blog authorization
 	IsAuthor(ctx context.Context, blogID, userID string) (bool, error)
 }
