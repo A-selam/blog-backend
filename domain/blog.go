@@ -67,8 +67,7 @@ type IBlogRepository interface {
 
 	//Blog authorization
 	IsAuthor(ctx context.Context, blogID, userID string) (bool, error)
-	// BlogMetricsInitializer(ctx context.Context, blogID string) error
-	// GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
+	
 	UpdateBlogMetrics(ctx context.Context, blogID string, field string, increment int) error
 
 }
