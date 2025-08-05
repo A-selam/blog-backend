@@ -17,7 +17,7 @@ import (
 
 func main() {
 	// Load .env file
-	err := godotenv.Load("../../.env")
+	err := godotenv.Load(".env")
 	if err != nil {
 		log.Println("Warning: .env file not found or failed to load", err)
 	}
@@ -53,7 +53,6 @@ func main() {
 	br := repository.NewBlogRepositoryFromDB(db)
 	bu := usecase.NewBlogUsecase(br, brr, bcr, timeOut)
 	bc := controller.NewBlogController(bu)
-
 	resetTR := repository.NewResetTokenRepository(db)
 	refreshTR := repository.NewRefreshTokenRepositoryFromDB(db)
 	au := usecase.NewAuthUsecase(ur, refreshTR, resetTR, jwtService, passwordService, timeOut)

@@ -4,6 +4,7 @@ import (
 	"blog-backend/domain"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -14,13 +15,14 @@ type blogUsecase struct {
 	contextTimeout         time.Duration
 }
 
+
 func NewBlogUsecase(
 	blogRepository domain.IBlogRepository,
 	blogReactionRepository domain.IReactionRepository,
 	blogCommentRepository domain.ICommentRepository,
 	timeout time.Duration,
-) domain.IBlogUseCase {
-	return &blogUsecase{
+	) domain.IBlogUseCase {
+		return &blogUsecase{
 		blogRepository:         blogRepository,
 		blogReactionRepository: blogReactionRepository,
 		blogCommentRepository:  blogCommentRepository,
@@ -37,8 +39,7 @@ func (bu *blogUsecase) CreateBlog(ctx context.Context, blog *domain.Blog) (*doma
 		// fmt.Println(err)
 		return nil, err
 	}
-
-
+	
 	return createdBlog, nil
 }
 
@@ -46,15 +47,14 @@ func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
 	blog, err := bu.blogRepository.GetBlogByID(ctx, blogID)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	
-
 	return blog, nil
 }
 
-func (bu *blogUsecase) UpdateBlog(ctx context.Context, blogID string,userID string,  updates map[string]interface{}) error {
+func (bu *blogUsecase) UpdateBlog(ctx context.Context, blogID string, userID string, updates map[string]interface{}) error {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
 	err := bu.blogRepository.UpdateBlog(ctx, blogID, userID, updates)
@@ -68,20 +68,20 @@ func (bu *blogUsecase) DeleteBlog(ctx context.Context, blogID string) error {
 	return err
 }
 
-func (bu *blogUsecase) ListBlogs(ctx context.Context, page, limit int) ([]*domain.Blog,int64, error) {
+func (bu *blogUsecase) ListBlogs(ctx context.Context, page, limit int) ([]*domain.Blog, int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
 	blogs, total, err := bu.blogRepository.ListBlogs(ctx, page, limit)
 	if err != nil {
-		return nil,0, err
+		return nil, 0, err
 	}
-	return blogs,total, nil
+	return blogs, total, nil
 }
 
 func (bu *blogUsecase) SearchBlogs(ctx context.Context, query string) ([]*domain.Blog, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
-
+	
 	blogs, err := bu.blogRepository.SearchBlogs(ctx, query)
 	if err != nil {
 		return nil, err
@@ -93,14 +93,14 @@ func (bu *blogUsecase) SearchBlogs(ctx context.Context, query string) ([]*domain
 func (bu *blogUsecase) AddReaction(ctx context.Context, blogID, userID string, reactionType string) error {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
-
+	
 	reaction := &domain.Reaction{
-		BlogID: blogID,
-		UserID: userID,
-		Type:   domain.ReactionType(reactionType),
+		BlogID:    blogID,
+		UserID:    userID,
+		Type:      domain.ReactionType(reactionType),
 		CreatedAt: time.Now(),
 	}
-
+	
 	rxn, noReaction, err := bu.blogReactionRepository.CheckReactionExists(ctx, blogID, userID)
 	if err != nil {
 		return err
@@ -112,59 +112,84 @@ func (bu *blogUsecase) AddReaction(ctx context.Context, blogID, userID string, r
 			return err
 		}
 		if reactionType == string(domain.Like) {
-			err = bu.blogMetricsRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), 1)
+			err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), 1)
 			if err != nil {
 				return err
 			}
-		} else {
-			err = bu.blogMetricsRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), 1)
+			} else {
+				err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), 1)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+			} else if string(rxn.Type) != reactionType {
+				err = bu.blogReactionRepository.UpdateReaction(ctx, blogID, userID, domain.ReactionType(reactionType))
+				if err != nil {
+					return err
+				}
+				
+				if reactionType == string(domain.Like) {
+					err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), 1)
 			if err != nil {
 				return err
 			}
-		}	
-		return nil
-	} else if string(rxn.Type) != reactionType {
-		err = bu.blogReactionRepository.UpdateReaction(ctx, blogID, userID, domain.ReactionType(reactionType))
-		if err != nil {
-			return err
+			err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), -1)
+			if err != nil {
+				return err
+			}
+			} else if reactionType == string(domain.Dislike) {
+				err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), 1)
+				if err != nil {
+					return err
+				}
+				err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), -1)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		}
-
-		if reactionType == string(domain.Like) {
-			err = bu.blogMetricsRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), 1)
-			if err != nil {
-				return err
-			} 
-			err = bu.blogMetricsRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), -1)
-			if err != nil {
-				return err
-			} 
-		} else if reactionType == string(domain.Dislike) {
-			err = bu.blogMetricsRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), 1)
-			if err != nil {
-				return err
-			} 
-			err = bu.blogMetricsRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), -1)
-			if err != nil {
-				return err
-			} 
-		}
-		return nil	
+		
+		return errors.New("reaction already exists with the same type")
 	}
-
-	return errors.New("reaction already exists with the same type")
-}
-
+	
 func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string) error {
-	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
-	defer cancel()
-	err := bu.blogReactionRepository.RemoveReaction(ctx, blogID, userID)
+		ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
+		defer cancel()
+		rxn, noReaction, err := bu.blogReactionRepository.CheckReactionExists(ctx, blogID, userID)
 	if err != nil {
 		return err
 	}
-	err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, "reactions", -1)
-	return err
+	if noReaction {
+		return errors.New("no reaction found to remove")
+	}
+	fmt.Println("Reaction found:", rxn.Type, domain.Like)
+	if string(rxn.Type) == string(domain.Like) {
+		err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), -1)
+		if err != nil {
+			return err
+		}
+		}else if rxn.Type == domain.Dislike {
+		err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), -1)
+		if err != nil {
+			return err
+		}
+		}else{
+			return errors.New("reaction type not recognized")
+		}
+	
+		err = bu.blogReactionRepository.RemoveReaction(ctx, blogID, userID)
+		if err != nil {
+		return err
+	}
+
+	return nil
 }
 
+func (bu *blogUsecase) IncrementViewCount(ctx context.Context, blogID string) error {
+	panic("unimplemented")
+}
 // Comments
 func (bu *blogUsecase) AddComment(ctx context.Context, blogID, authorID string, content string) (*domain.Comment, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
@@ -177,11 +202,11 @@ func (bu *blogUsecase) AddComment(ctx context.Context, blogID, authorID string, 
 	}
 
 	res, err := bu.blogCommentRepository.AddComment(ctx, comment)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, "comment_count", 1)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -217,14 +242,4 @@ func (bu *blogUsecase) IsBlogAuthor(ctx context.Context, blogID, userID string) 
 	return isAuthor, nil
 }
 
-func (bu *blogUsecase) GetBlogMetrics(ctx context.Context, blogID string) (*domain.BlogMetrics, error) {
-	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
-	defer cancel()
 
-	metrics, err := bu.blogMetricsRepository.GetBlogMetrics(ctx, blogID)
-	if err != nil {
-		return nil, err
-	}
-
-	return metrics, nil
-}

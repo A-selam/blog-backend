@@ -304,13 +304,7 @@ func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (
 }
 
 
-type BlogMetricsDTO struct {
-	BlogID       bson.ObjectID `bson:"blog_id"`
-	ViewCount    int           `bson:"view_count"`
-	LikeCount    int           `bson:"like_count"`
-	DislikeCount int           `bson:"dislike_count"`
-	CommentCount int           `bson:"comment_count"`
-}
+
 
 type BlogResponseDTO struct {
 	ID        bson.ObjectID `bson:"_id"`
@@ -320,6 +314,10 @@ type BlogResponseDTO struct {
 	Tags      []string      `bson:"tags" binding:"required"`
 	CreatedAt time.Time     `bson:"created_at"`
 	UpdatedAt time.Time     `bson:"updated_at"`
+	ViewCount    int           `bson:"view_count"`
+	LikeCount    int           `bson:"like_count"`
+	DislikeCount int           `bson:"dislike_count"`
+	CommentCount int           `bson:"comment_count"`
 }
 
 type BlogDTO struct {
@@ -348,10 +346,10 @@ func DomainToDto(blog *domain.Blog) (*BlogDTO, error) {
 		Tags:      blog.Tags,
 		CreatedAt: now,
 		UpdatedAt: now,
-		ViewCount:    0,
-		LikeCount:    0,
-		DislikeCount: 0,
-		CommentCount: 0,
+		ViewCount:    blog.ViewCount,
+		LikeCount:    blog.LikeCount,
+		DislikeCount: blog.DislikeCount,
+		CommentCount: blog.CommentCount,
 	}, err
 }
 
@@ -364,6 +362,11 @@ func DtoToDomain(blogDTO *BlogResponseDTO) *domain.Blog {
 		Tags:      blogDTO.Tags,
 		CreatedAt: blogDTO.CreatedAt,
 		UpdatedAt: blogDTO.UpdatedAt,
+		ViewCount: blogDTO.ViewCount,
+		LikeCount: blogDTO.LikeCount,
+		DislikeCount: blogDTO.DislikeCount,	
+		CommentCount: blogDTO.CommentCount,
+
 	}
 }
 

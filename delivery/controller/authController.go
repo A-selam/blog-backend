@@ -94,6 +94,9 @@ func (ac *AuthController) Login(c *gin.Context) {
 		true,
 		true,
 	)
+	cook, err := c.Cookie("refresh_token")
+	fmt.Println("Refresh Token:", cook, err)
+	fmt.Println("Refresh Token2:", tokenPair.RefreshToken)
 
 	c.JSON(http.StatusOK, gin.H{
 		"User":      loginResponseFromDomain(user),
@@ -104,6 +107,7 @@ func (ac *AuthController) Login(c *gin.Context) {
 func (ac *AuthController) RefreshToken(c *gin.Context) {
 	// 1. Get the refresh token from the cookie
 	refreshToken, err := c.Cookie("refresh_token")
+	fmt.Println("Refresh Token:", refreshToken, err)
 	if err != nil || refreshToken == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token missing"})
 		return
@@ -218,6 +222,8 @@ func emailValidator(email string) error {
 
 func (ac *AuthController)Logout(c *gin.Context ) {
 	RefreshToken, err := c.Cookie("refresh_token")
+	
+	fmt.Println("Refresh Token:", RefreshToken, err)
 	if err != nil || RefreshToken == "" {
 		c.JSON(400, gin.H{"error": "Refresh token missing"})
 		return
