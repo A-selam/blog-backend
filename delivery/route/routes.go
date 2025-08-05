@@ -29,23 +29,23 @@ func Setup(ac *controller.AuthController, bc *controller.BlogController, uc *con
 
 func NewAuthRouter(handler *controller.AuthController, group *gin.RouterGroup) {
 	group.POST("/auth/register", handler.Register)
-	group.POST("/auth/login", handler.Login )
+	group.POST("/auth/login", handler.Login)
 	group.POST("/auth/logout", handler.Logout)
 	group.POST("/auth/refresh-token", handler.RefreshToken)
-	group.POST("/auth/forgot-password", handler.ForgotPassword )
-	group.POST("/auth/reset-password",handler.ResetPassword)
+	group.POST("/auth/forgot-password", handler.ForgotPassword)
+	group.POST("/auth/reset-password", handler.ResetPassword)
 	group.POST("/auth/refresh", handler.RefreshToken)
 }
 
 func NewUserRouter(handler *controller.UserController, group *gin.RouterGroup) {
 	group.GET("/users/me", handler.GetCurrentUserProfile)
-	group.PATCH("/users/me",handler.UpdateCurrentUserProfile )
+	group.PATCH("/users/me", handler.UpdateCurrentUserProfile)
 	group.GET("/users/:id", handler.GetUserByID)
 }
 
 func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 	group.GET("/blogs", handler.ListBlogs)
-	group.GET("/blogs/user/:id",handler.GetBlogsByUserID )
+	group.GET("/blogs/user/:id", handler.GetBlogsByUserID)
 	group.GET("/blogs/:id", handler.GetBlog)
 	group.GET("/blogs/search", handler.SearchBlogs)
 	group.GET("/blogs/:id/comments", handler.ListAllComments)
@@ -54,20 +54,22 @@ func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 	group.POST("/blogs", handler.CreateBlog)
 	group.PATCH("/blogs/:id", handler.UpdateBlog)
-	group.DELETE("/blogs/:id", handler.DeleteBlog)
-	group.POST("/blogs/:id/like", handler.LikeBlog)
-	group.POST("/blogs/:id/dislike", handler.DislikeBlog)
-	group.DELETE("/blogs/:id/reaction", handler.RemoveReaction)
-	group.POST("/blogs/:id/comments", handler.CreateComment)
+	group.DELETE("/blogs/:id", handler.DeleteBlogByAuth)
+	group.POST("/blogs/:id/like")
+	group.POST("/blogs/:id/dislike")
+	group.DELETE("/blogs/:id/reaction",handler.RemoveReaction)
+	group.POST("/blogs/:id/comments",handler.CreateComment)
+	group.DELETE("/blogs/:id/comments", handler.DeleteCommentByAuth)
 }
 
 func NewAdminRouter(userHandler *controller.UserController, blogHandler *controller.BlogController, group *gin.RouterGroup) {
 	// User Management
-	group.GET("/users",)
+	group.GET("/users", userHandler.GetUsers)
 	group.POST("/users/:id/promote", userHandler.PromoteUser)
 	group.POST("/users/:id/demote", userHandler.DemoteUser)
-	group.DELETE("/users/:id", )
+	group.DELETE("/users/:id")
 
 	// Blog Moderation
-	group.DELETE("/blogs/:id",blogHandler.DeleteBlog)
+	group.DELETE("/blogs/:id", blogHandler.DeleteBlogByAdmin)
+	group.DELETE("/blogs/:id/comments", blogHandler.DeleteCommentByAdmin)
 }

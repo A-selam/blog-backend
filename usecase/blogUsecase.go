@@ -214,7 +214,11 @@ func (bu *blogUsecase) AddComment(ctx context.Context, blogID, authorID string, 
 	}
 	return res, nil
 }
-
+func (bu *blogUsecase) IsComAuthor(ctx context.Context, comId, userId string) (bool, error){
+	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
+	defer cancel()
+	return bu.blogCommentRepository.IsComAuthor(ctx,comId,userId)
+}
 func (bu *blogUsecase) GetComments(ctx context.Context, blogID string) ([]*domain.Comment, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()

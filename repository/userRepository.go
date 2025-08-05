@@ -8,6 +8,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
 )
 
 type userRepository struct {
@@ -125,9 +127,14 @@ func (ur userRepository) UpdateUser(ctx context.Context, id string, updates map[
 	}
 	return nil
 }
-
+//i used soft delete to preserve the context of history for other objects such as blog and comments
 func (ur userRepository) DeleteUser(ctx context.Context, id string) error {
-	// TODO: Implement the function
+	connection := ur.database.Collection(ur.collection) 
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	connection.DeleteOne(ctx, bson.M{"_id":oid})
 	return nil
 }
 
@@ -174,6 +181,39 @@ func (ur userRepository) DemoteToUser(ctx context.Context, userID string) error 
 	}
 
 	return nil
+}
+func (ur userRepository)GetUsers(ctx context.Context, page, limit int)([]*domain.User,int64, error){
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+	collection := ur.database.Collection(ur.collection)
+	skip := int64((page - 1) * limit)
+	lim := int64(limit)
+	findOptions := options.Find()
+	findOptions.SetSkip(skip)
+	findOptions.SetLimit(lim)
+	cursor, err := collection.Find(ctx, bson.M{}, findOptions)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+	var userResDTOs []UserDTO
+	if err = cursor.All(ctx, &userResDTOs); err != nil {
+		return nil, 0, err
+	}
+	users := make([]*domain.User, len(userResDTOs))
+	for i, dto := range userResDTOs {
+		users[i] = DTOToDomain(&dto)
+	}
+	total, err := collection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return users, total, nil
 }
 
 // DTOs

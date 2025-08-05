@@ -3,6 +3,7 @@ package controller
 import (
 	"blog-backend/domain"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,7 +12,7 @@ type UserController struct {
 	UserUseCase domain.IUserUseCase
 }
 
-func NewUserController(uu domain.IUserUseCase) *UserController{
+func NewUserController(uu domain.IUserUseCase) *UserController {
 	return &UserController{
 		UserUseCase: uu,
 	}
@@ -67,7 +68,7 @@ func (uc *UserController) UpdateCurrentUserProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User profile updated successfully."})
 }
 
-func (uc *UserController) PromoteUser(c *gin.Context){
+func (uc *UserController) PromoteUser(c *gin.Context) {
 	userID := c.Param("id")
 	if userID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required."})
@@ -83,7 +84,7 @@ func (uc *UserController) PromoteUser(c *gin.Context){
 	c.JSON(http.StatusOK, gin.H{"message": "User promoted successfully."})
 }
 
-func (uc *UserController) DemoteUser(c *gin.Context){
+func (uc *UserController) DemoteUser(c *gin.Context) {
 	userID := c.Param("id")
 	if userID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required."})
@@ -97,4 +98,35 @@ func (uc *UserController) DemoteUser(c *gin.Context){
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "User demoted successfully."})
+}
+func (uc *UserController) GetUsers(c *gin.Context) {
+	p := c.Query("page")
+	l := c.Query("limit")
+	page, err := strconv.Atoi(p)
+	if err != nil || p == "" {
+		page = 1
+	}
+	limit, err := strconv.Atoi(l)
+	if err != nil || l == "" {
+		limit = 10
+	}
+	users, total, err := uc.UserUseCase.GetUsers(c, page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch Users."})
+		return
+	}
+	totalPages := (total + int64(limit) - 1) / int64(limit)
+
+	c.JSON(http.StatusOK, gin.H{"users": users, "total": totalPages, "page": page, "limit": limit})
+}
+
+func (uc *UserController) DeleteUser(c *gin.Context) {
+	userID := c.Param("id")
+	err := uc.UserUseCase.DeleteUser(c, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete blog."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Blog deleted successfully."})
 }

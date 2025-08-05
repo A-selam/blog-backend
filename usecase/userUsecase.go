@@ -78,3 +78,17 @@ func (uu *userUsecase) DemoteToUser(ctx context.Context, targetUserID string) er
 
 	return nil
 }
+func (uu *userUsecase) GetUsers(ctx context.Context, page, limit int)([]*domain.User,int64, error){
+	ctx, cancel := context.WithTimeout(ctx, uu.contextTimeout)
+	defer cancel()
+	users, total, err := uu.userRepository.GetUsers(ctx, page, limit)
+	if err != nil {
+		return nil,0, err
+	}
+	return users,total, nil
+}
+func (uu *userUsecase) DeleteUser(ctx context.Context, id string) error {
+	ctx , cancel := context.WithTimeout(ctx,uu.contextTimeout)
+	defer cancel()
+	return uu.DeleteUser(ctx,id)
+}
