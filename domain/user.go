@@ -13,22 +13,22 @@ const (
 )
 
 type User struct {
-	ID           string 
-	Username     string 
-	Email        string 
-	PasswordHash string 
-	Role         Role   
-	CreatedAt    time.Time 
-	UpdatedAt    time.Time 
+	ID           string
+	Username     string
+	Email        string
+	PasswordHash string
+	Role         Role
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 
 	// Profile Info
 	Bio            string
-	ProfilePicture string 
+	ProfilePicture string
 	ContactInfo    string
 }
 
 type Login struct {
-	Email string
+	Email    string
 	Password string
 }
 
@@ -39,6 +39,7 @@ type IUserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 	GetUserByUsernameAndEmail(ctx context.Context, username, email string) (*User, error)
+	GetUsers(ctx context.Context, page, limit int) ([]*User, int64, error)
 	UpdateUser(ctx context.Context, id string, updates map[string]interface{}) error
 	DeleteUser(ctx context.Context, id string) error
 
@@ -57,4 +58,6 @@ type IUserUseCase interface {
 	// Admin Only
 	PromoteToAdmin(ctx context.Context, targetUserID string) error
 	DemoteToUser(ctx context.Context, targetUserID string) error
+	GetUsers(ctx context.Context, page, limit int) ([]*User, int64, error)
+	DeleteUser(ctx context.Context, id string) error
 }

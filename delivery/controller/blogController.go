@@ -40,22 +40,18 @@ func (bc *BlogController) CreateBlog(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"blog": createdBlog})
 }
 
-func (bc *BlogController) DeleteBlog(c *gin.Context) {
+func (bc *BlogController) DeleteBlogByAuth(c *gin.Context) {
 	blogID := c.Param("id")
 	userID, _ := c.Get("x-user-id")
-	userRole, _ := c.Get("x-user-role")
 
-	isAuthor, err := bc.BlogUseCase.IsBlogAuthor(c, blogID, userID.(string))
+	isAuth, err := bc.BlogUseCase.IsBlogAuthor(c, blogID, userID.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify author."})
 		return
 	}
-
-	if !isAuthor && userRole.(string) != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to delete this blog."})
-		return
+	if !isAuth {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "your aren't authorized to delete the blog."})
 	}
-
 	err = bc.BlogUseCase.DeleteBlog(c, blogID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete blog."})
@@ -64,7 +60,16 @@ func (bc *BlogController) DeleteBlog(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Blog deleted successfully."})
 }
-
+//since the middleware does the autherization we don't have to check
+func (bc *BlogController) DeleteBlogByAdmin(c *gin.Context) {
+	blogID := c.Param("id")
+	err := bc.BlogUseCase.DeleteBlog(c, blogID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete blog."})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Blog deleted successfully."})
+}
 func (bc *BlogController) SearchBlogs(c *gin.Context) {
 	query := c.Query("q")
 	if query == "" {

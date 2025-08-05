@@ -4,6 +4,7 @@ import (
 	"blog-backend/domain"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 type UserController struct {
@@ -94,4 +95,35 @@ func (uc *UserController) DemoteUser(c *gin.Context){
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "User demoted successfully."})
+}
+func (uc *UserController)GetUsers(c *gin.Context){
+	p := c.Query("page")
+	l := c.Query("limit")
+	page, err := strconv.Atoi(p)
+	if err != nil || p == "" {
+		page = 1
+	}
+	limit, err := strconv.Atoi(l)
+	if err != nil || l == "" {
+		limit = 10
+	}
+	users, total, err := uc.UserUseCase.GetUsers(c, page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch Users."})
+		return
+	}
+	totalPages := (total + int64(limit) - 1) / int64(limit)
+
+	c.JSON(http.StatusOK, gin.H{"users": users, "total": totalPages, "page": page, "limit": limit})
+}
+
+func (uc *UserController) DeleteUser(c *gin.Context) {
+	userID := c.Param("id")
+	err := uc.UserUseCase.DeleteUser(c,userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete blog."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Blog deleted successfully."})
 }

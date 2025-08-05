@@ -98,5 +98,5 @@ type IBlogUseCase interface {
 	// Comments
 	AddComment(ctx context.Context, blogID, authorID string, content string) (*Comment, error)
 	GetComments(ctx context.Context, blogID string) ([]*Comment, error)
-
+	RemoveComment(ctx context.Context,commentID string)(error)
 }

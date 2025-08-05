@@ -53,20 +53,21 @@ func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 	group.POST("/blogs", handler.CreateBlog)
 	group.PATCH("/blogs/:id", handler.UpdateBlog)
-	group.DELETE("/blogs/:id", handler.DeleteBlog)
+	group.DELETE("/blogs/:id", handler.DeleteBlogByAuth)
 	group.POST("/blogs/:id/like", )
 	group.POST("/blogs/:id/dislike", )
 	group.DELETE("/blogs/:id/reaction", )
 	group.POST("/blogs/:id/comments", )
+	group.DELETE("/blogs/:id/comments")
 }
 
 func NewAdminRouter(userHandler *controller.UserController, blogHandler *controller.BlogController, group *gin.RouterGroup) {
 	// User Management
-	group.GET("/users",)
+	group.GET("/users", userHandler.GetUsers)
 	group.POST("/users/:id/promote", userHandler.PromoteUser)
 	group.POST("/users/:id/demote", userHandler.DemoteUser )
 	group.DELETE("/users/:id", )
 
 	// Blog Moderation
-	group.DELETE("/blogs/:id",blogHandler.DeleteBlog)
+	group.DELETE("/blogs/:id",blogHandler.DeleteBlogByAdmin)
 }

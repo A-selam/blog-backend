@@ -112,7 +112,11 @@ func (bu *blogUsecase) AddComment(ctx context.Context, blogID, authorID string, 
 	// TODO: implement this function
 	return nil, nil
 }
-
+func (bu *blogUsecase) RemoveComment(ctx context.Context,commentID string)(error){
+	ctx, cancel := context.WithTimeout(ctx,bu.contextTimeout)
+	defer cancel()
+	return bu.blogCommentRepository.DeleteComment(ctx,commentID)
+}
 func (bu *blogUsecase) GetComments(ctx context.Context, blogID string) ([]*domain.Comment, error) {
 	// TODO: implement this function
 	return nil, nil
