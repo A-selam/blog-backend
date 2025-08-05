@@ -262,7 +262,6 @@ func DtoToDomain(blogDTO *BlogDTO, authorID string) *domain.Blog {
 		Tags:     blogDTO.Tags,
 	}
 }
-
 type BlogUpdateDTO struct {
 	Title   *string   `json:"title,omitempty"`
 	Content *string   `json:"content,omitempty"`

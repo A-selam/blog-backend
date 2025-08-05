@@ -47,7 +47,7 @@ func (au *authUsecase) Register(ctx context.Context, user *domain.User) (*domain
 
 	_, err := au.userRepository.GetUserByUsernameAndEmail(ctx, user.Username, user.Email)
 	if err == nil {
-		return nil, fmt.Errorf("Username is already taken.")
+		return nil, fmt.Errorf("username is already taken")
 	}
 	if err != mongo.ErrNoDocuments {
 		return nil, err 
@@ -55,7 +55,7 @@ func (au *authUsecase) Register(ctx context.Context, user *domain.User) (*domain
 
 	hashedPassword, err := au.passwordServices.HashPassword(user.PasswordHash)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to hash password: %v", err)
+		return nil, fmt.Errorf("failed to hash password: %v", err)
 	}
 	user.PasswordHash = hashedPassword
 

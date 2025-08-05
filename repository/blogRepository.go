@@ -135,6 +135,12 @@ func (br *blogRepository) DeleteBlog(ctx context.Context, id string) error {
 
 // Blog Listing
 func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int) ([]*domain.Blog,int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
 	collection := br.database.Collection(br.collection)
 	skip := int64((page - 1) * limit)
 	lim := int64(limit)
@@ -143,7 +149,7 @@ func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int) ([]*do
 	findOptions.SetLimit(lim)
 	cursor, err := collection.Find(ctx, bson.M{}, findOptions)
 	if err != nil {
-		return nil,0, err
+		return nil, 0, err
 	}
 	defer cursor.Close(ctx)
 	var blogResDTOs []BlogResponseDTO
@@ -319,6 +325,9 @@ func (br *blogRepository) DecrementDislikeCount(ctx context.Context, blogID stri
 func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (bool, error) {
 	collection := br.database.Collection(br.collection)
 	oid, err := bson.ObjectIDFromHex(blogID)
+	if err != nil {
+		return false, err
+	}
 	ouid,err := bson.ObjectIDFromHex(userID)
 	if err != nil {
 		return false, err
