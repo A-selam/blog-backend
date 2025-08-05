@@ -4,6 +4,8 @@ import (
 	"blog-backend/domain"
 	"net/http"
 	"strconv"
+	"time"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -119,12 +121,12 @@ func (bc *BlogController) GetBlog(c *gin.Context) {
 	if id == "" {
 		c.JSON(400, gin.H{"error": "Blog ID is required."})
 	}
-	blog, metrics, err := bc.BlogUseCase.GetBlog(c, id)
+	blog, err := bc.BlogUseCase.GetBlog(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch blog."})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"blog": blog, "metrics": metrics})
+	c.JSON(http.StatusOK, gin.H{"blog": blog})
 }
 
 func (bc *BlogController) UpdateBlog(c *gin.Context) {
@@ -244,6 +246,12 @@ func DtoToDomain(blogDTO *BlogDTO, authorID string) *domain.Blog {
 		Content:  blogDTO.Content,
 		AuthorID: authorID,
 		Tags:     blogDTO.Tags,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),	
+		ViewCount:    0,
+		LikeCount:    0,
+		DislikeCount: 0,
+		CommentCount: 0,
 	}
 }
 
