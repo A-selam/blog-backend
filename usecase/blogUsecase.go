@@ -42,11 +42,14 @@ func (bu *blogUsecase) CreateBlog(ctx context.Context, blog *domain.Blog) (*doma
 	
 	return createdBlog, nil
 }
-
 func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
 	blog, err := bu.blogRepository.GetBlogByID(ctx, blogID)
+	if err != nil {
+		return nil, err
+	}
+	err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, "view_count", 1)
 	if err != nil {
 		return nil, err
 	}
@@ -68,10 +71,10 @@ func (bu *blogUsecase) DeleteBlog(ctx context.Context, blogID string) error {
 	return err
 }
 
-func (bu *blogUsecase) ListBlogs(ctx context.Context, page, limit int) ([]*domain.Blog, int64, error) {
+func (bu *blogUsecase) ListBlogs(ctx context.Context, page, limit int, field string) ([]*domain.Blog, int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
-	blogs, total, err := bu.blogRepository.ListBlogs(ctx, page, limit)
+	blogs, total, err := bu.blogRepository.ListBlogs(ctx, page, limit, field)
 	if err != nil {
 		return nil, 0, err
 	}

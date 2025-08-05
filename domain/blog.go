@@ -61,7 +61,7 @@ type IBlogRepository interface {
 	DeleteBlog(ctx context.Context, id string) error
 
 	// Blog Listing
-	ListBlogs(ctx context.Context, page, limit int) ([]*Blog, int64, error)
+	ListBlogs(ctx context.Context, page, limit int, field string) ([]*Blog, int64, error)
 	ListBlogsByAuthor(ctx context.Context, authorID string) ([]*Blog, error)
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
 
@@ -70,7 +70,6 @@ type IBlogRepository interface {
 	// BlogMetricsInitializer(ctx context.Context, blogID string) error
 	// GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
 	UpdateBlogMetrics(ctx context.Context, blogID string, field string, increment int) error
-	IncrementViewCount(ctx context.Context, blogID string) error
 
 }
 
@@ -95,11 +94,10 @@ type IBlogUseCase interface {
 	GetBlog(ctx context.Context, blogID string) (*Blog, error)
 	UpdateBlog(ctx context.Context, blogID string, userID string, updates map[string]interface{}) error
 	DeleteBlog(ctx context.Context, blogID string) error
-	ListBlogs(ctx context.Context, page, limit int) ([]*Blog,int64, error)
+	ListBlogs(ctx context.Context, page, limit int, field string) ([]*Blog,int64, error)
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
 	IsBlogAuthor(ctx context.Context, blogID, userID string) (bool, error)
 	GetBlogsByUserID(ctx context.Context, userID string) ([]*Blog, error)
-	IncrementViewCount(ctx context.Context, blogID string) error	
 	// Reactions
 	AddReaction(ctx context.Context, blogID, userID string, reactionType string) error
 	RemoveReaction(ctx context.Context, blogID, userID string) error

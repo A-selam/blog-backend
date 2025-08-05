@@ -107,8 +107,10 @@ func (br *blogRepository) DeleteBlog(ctx context.Context, id string) error {
 	return err
 }
 
+
+
 // Blog Listing
-func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int) ([]*domain.Blog,int64, error) {
+func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int, field string) ([]*domain.Blog,int64, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -121,6 +123,9 @@ func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int) ([]*do
 	findOptions := options.Find()
 	findOptions.SetSkip(skip)
 	findOptions.SetLimit(lim)
+	findOptions.SetSort(bson.D{{Key: field, Value: -1}}) 
+
+	
 	cursor, err := collection.Find(ctx, bson.M{}, findOptions)
 	if err != nil {
 		return nil, 0, err
@@ -206,82 +211,7 @@ func (br *blogRepository) UpdateBlogMetrics(ctx context.Context, blogID string, 
 
 	return err
 }
-func (br *blogRepository) IncrementViewCount(ctx context.Context, blogID string) error {
-	// TODO: implement this function
-	return nil
-}
 
-func (br *blogRepository) IncrementLikeCount(ctx context.Context, blogID string) error {
-	collection := br.database.Collection("blog_metrics")
-	oid, err := bson.ObjectIDFromHex(blogID)
-	if err != nil {
-		return err
-	}
-
-	filter := bson.D{{Key: "blog_id", Value: oid}}
-	update := bson.D{{Key: "$inc", Value: bson.D{{Key: "like_count", Value: 1}}}}
-	
-	_, err = collection.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (br *blogRepository) DecrementLikeCount(ctx context.Context, blogID string) error {
-	collection := br.database.Collection("blog_metrics")
-	oid, err := bson.ObjectIDFromHex(blogID)
-	if err != nil {
-		return err
-	}
-
-	filter := bson.D{{Key: "blog_id", Value: oid}}
-	update := bson.D{{Key: "$dec", Value: bson.D{{Key: "like_count", Value: 1}}}}
-	
-	_, err = collection.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (br *blogRepository) IncrementDislikeCount(ctx context.Context, blogID string) error {
-	collection := br.database.Collection("blog_metrics")
-	oid, err := bson.ObjectIDFromHex(blogID)
-	if err != nil {
-		return err
-	}
-
-	filter := bson.D{{Key: "blog_id", Value: oid}}
-	update := bson.D{{Key: "$inc", Value: bson.D{{Key: "like_count", Value: 1}}}}
-	
-	_, err = collection.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (br *blogRepository) DecrementDislikeCount(ctx context.Context, blogID string) error {
-	collection := br.database.Collection("blog_metrics")
-	oid, err := bson.ObjectIDFromHex(blogID)
-	if err != nil {
-		return err
-	}
-
-	filter := bson.D{{Key: "blog_id", Value: oid}}
-	update := bson.D{{Key: "$dec", Value: bson.D{{Key: "like_count", Value: 1}}}}
-	
-	_, err = collection.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 // i added this function because we didn't have a function that evaluate blog authers k
 func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (bool, error) {

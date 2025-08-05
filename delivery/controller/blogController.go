@@ -97,6 +97,10 @@ func (bc *BlogController) GetBlogsByUserID(c *gin.Context) {
 func (bc *BlogController) ListBlogs(c *gin.Context) {
 	p := c.Query("page")
 	l := c.Query("limit")
+	field := c.Query("field")
+	if field == "" {
+		field = "created_at" 
+	}
 	page, err := strconv.Atoi(p)
 	if err != nil || p == "" {
 		page = 1
@@ -105,7 +109,7 @@ func (bc *BlogController) ListBlogs(c *gin.Context) {
 	if err != nil || l == "" {
 		limit = 10
 	}
-	blogs, total, err := bc.BlogUseCase.ListBlogs(c, page, limit)
+	blogs, total, err := bc.BlogUseCase.ListBlogs(c, page, limit, field)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch blogs."})
 		return
