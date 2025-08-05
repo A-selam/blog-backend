@@ -13,6 +13,10 @@ type Blog struct {
 	Tags      []string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	ViewCount    int                
+    LikeCount    int                
+    DislikeCount int                
+    CommentCount int
 }
 
 type Comment struct {
@@ -23,15 +27,6 @@ type Comment struct {
     CreatedAt time.Time          
 }
 
-type BlogMetrics struct {
-	ID           string
-	BlogID       string
-
-    ViewCount    int                
-    LikeCount    int                
-    DislikeCount int                
-    CommentCount int                
-}
 
 type ReactionType string
 
@@ -55,13 +50,7 @@ const (
 	DislikeCountField UpdateMetricsField = "dislike_count"
 )
 
-type IBlogMetricsRepository interface {
-	// Blog Metrics	
-	BlogMetricsInitializer(ctx context.Context, blogID string) error
-	GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
-	UpdateBlogMetrics(ctx context.Context, blogID string, field string, increment int) error
-	IncrementViewCount(ctx context.Context, blogID string) error
-}
+
 
 type IBlogRepository interface {
 	// Blog CRUD
@@ -78,6 +67,11 @@ type IBlogRepository interface {
 
 	//Blog authorization
 	IsAuthor(ctx context.Context, blogID, userID string) (bool, error)
+	// BlogMetricsInitializer(ctx context.Context, blogID string) error
+	// GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
+	UpdateBlogMetrics(ctx context.Context, blogID string, field string, increment int) error
+	IncrementViewCount(ctx context.Context, blogID string) error
+
 }
 
 type IReactionRepository interface {
@@ -98,15 +92,14 @@ type ICommentRepository interface {
 
 type IBlogUseCase interface {
 	CreateBlog(ctx context.Context, blog *Blog) (*Blog, error)
-	GetBlog(ctx context.Context, blogID string) (*Blog, *BlogMetrics, error)
+	GetBlog(ctx context.Context, blogID string) (*Blog, error)
 	UpdateBlog(ctx context.Context, blogID string, userID string, updates map[string]interface{}) error
 	DeleteBlog(ctx context.Context, blogID string) error
 	ListBlogs(ctx context.Context, page, limit int) ([]*Blog,int64, error)
 	SearchBlogs(ctx context.Context, query string) ([]*Blog, error)
 	IsBlogAuthor(ctx context.Context, blogID, userID string) (bool, error)
 	GetBlogsByUserID(ctx context.Context, userID string) ([]*Blog, error)
-	GetBlogMetrics(ctx context.Context, blogID string) (*BlogMetrics, error)
-	
+	IncrementViewCount(ctx context.Context, blogID string) error	
 	// Reactions
 	AddReaction(ctx context.Context, blogID, userID string, reactionType string) error
 	RemoveReaction(ctx context.Context, blogID, userID string) error

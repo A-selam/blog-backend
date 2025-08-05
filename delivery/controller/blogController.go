@@ -120,12 +120,12 @@ func (bc *BlogController) GetBlog(c *gin.Context) {
 	if id == "" {
 		c.JSON(400, gin.H{"error": "Blog ID is required."})
 	}
-	blog, metrics, err := bc.BlogUseCase.GetBlog(c, id)
+	blog, err := bc.BlogUseCase.GetBlog(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch blog."})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"blog": blog, "metrics": metrics})
+	c.JSON(http.StatusOK, gin.H{"blog": blog})
 }
 
 func (bc *BlogController) UpdateBlog(c *gin.Context) {
@@ -187,22 +187,97 @@ func (bc *BlogController) RemoveReaction(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Reaction removed successfully"})
 }
 
+func (bc * BlogController) CreateComment(c *gin.Context){
+	blogID := c.Param("id")
+	userID, exists := c.Get("x-user-id")
+	if !exists{
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+	}
+	if blogID == ""{
+		c.JSON(400, gin.H{"error": "Invalid Request. Blog ID is required"})
+		return
 
-func (bc *BlogController) GetBlogMetrics(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		c.JSON(400, gin.H{"error": "Blog ID is required."})
-		return
 	}
-	
-	metrics, err := bc.BlogUseCase.GetBlogMetrics(c, id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch blog metrics."})
-		return
-	}
-	
-	c.JSON(http.StatusOK, gin.H{"metrics": metrics})
+	type CommentDTO struct {
+    Comment string `json:"comment" binding:"required"`
 }
+	var commentDTO CommentDTO
+	if err := c.ShouldBindJSON(&commentDTO); err != nil{
+		c.JSON(400, gin.H{"error": "Invalid Request. Comment is required"})
+		return
+	}
+	_, err := bc.BlogUseCase.AddComment(c, blogID, userID.(string), commentDTO.Comment)
+	if err !=nil{
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to add you comment"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "comment added successfully!"})
+
+}
+
+func (bc *BlogController) ListAllComments(c *gin.Context){
+	blogID := c.Param("id")
+	if blogID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Blog ID is required"})
+		return
+	}
+
+	comments, err := bc.BlogUseCase.GetComments(c, blogID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch comments", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"comments": comments})
+
+}
+
+func (bc * BlogController) CreateComment(c *gin.Context){
+	blogID := c.Param("id")
+	userID, exists := c.Get("x-user-id")
+	if !exists{
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+	}
+	if blogID == ""{
+		c.JSON(400, gin.H{"error": "Invalid Request. Blog ID is required"})
+		return
+
+	}
+	type CommentDTO struct {
+    Comment string `json:"comment" binding:"required"`
+}
+	var commentDTO CommentDTO
+	if err := c.ShouldBindJSON(&commentDTO); err != nil{
+		c.JSON(400, gin.H{"error": "Invalid Request. Comment is required"})
+		return
+	}
+	_, err := bc.BlogUseCase.AddComment(c, blogID, userID.(string), commentDTO.Comment)
+	if err !=nil{
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to add you comment"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "comment added successfully!"})
+
+}
+
+func (bc *BlogController) ListAllComments(c *gin.Context){
+	blogID := c.Param("id")
+	if blogID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Blog ID is required"})
+		return
+	}
+
+	comments, err := bc.BlogUseCase.GetComments(c, blogID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch comments", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"comments": comments})
+
+}
+
+
 
 func (bc *BlogController) LikeBlog(c *gin.Context) {
 	blogID := c.Param("id")
@@ -259,7 +334,11 @@ func DtoToDomain(blogDTO *BlogDTO, authorID string) *domain.Blog {
 		Title:    blogDTO.Title,
 		Content:  blogDTO.Content,
 		AuthorID: authorID,
-		Tags:     blogDTO.Tags,
+		Tags:     blogDTO.Tags,	
+		ViewCount:    0,
+		LikeCount:    0,
+		DislikeCount: 0,
+		CommentCount: 0,
 	}
 }
 type BlogUpdateDTO struct {

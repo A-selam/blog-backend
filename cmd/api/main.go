@@ -48,11 +48,10 @@ func main() {
 	ur := repository.NewUserRepositoryFromDB(db)
 	uu := usecase.NewUserUsecase(ur, timeOut,passwordService)
 	uc := controller.NewUserController(uu)
-	bmr := repository.NewBlogMetricsRepositoryFromDB(db)
 	bcr := repository.NewCommentRepositoryFromDB(db)
 	brr := repository.NewReactionRepositoryFromDB(db)
 	br := repository.NewBlogRepositoryFromDB(db)
-	bu := usecase.NewBlogUsecase(br, brr, bcr, timeOut, bmr)
+	bu := usecase.NewBlogUsecase(br, brr, bcr, timeOut)
 	bc := controller.NewBlogController(bu)
 
 	resetTR := repository.NewResetTokenRepository(db)
