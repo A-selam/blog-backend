@@ -94,6 +94,8 @@ type ICommentRepository interface {
 	AddComment(ctx context.Context, comment *Comment) (*Comment, error)
 	GetCommentsForBlog(ctx context.Context, blogID string) ([]*Comment, error)
 	DeleteComment(ctx context.Context, commentID string) error
+	IsComAuthor(ctx context.Context, comId, userId string) (bool,error)
+
 }
 
 type IBlogUseCase interface {
@@ -115,4 +117,5 @@ type IBlogUseCase interface {
 	AddComment(ctx context.Context, blogID, authorID string, content string) (*Comment, error)
 	GetComments(ctx context.Context, blogID string) ([]*Comment, error)
 	RemoveComment(ctx context.Context,commentID string)(error)
+	IsComAuthor(ctx context.Context, comId, userId string) (bool,error)
 }

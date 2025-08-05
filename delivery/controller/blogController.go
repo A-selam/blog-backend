@@ -252,7 +252,78 @@ func (bc *BlogController) DislikeBlog(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Reaction added successfully."})
 }
+func (bc * BlogController) CreateComment(c *gin.Context){
+	blogID := c.Param("id")
+	userID, exists := c.Get("x-user-id")
+	if !exists{
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+	}
+	if blogID == ""{
+		c.JSON(400, gin.H{"error": "Invalid Request. Blog ID is required"})
+		return
 
+	}
+	type CommentDTO struct {
+    Comment string `json:"comment" binding:"required"`
+}
+	var commentDTO CommentDTO
+	if err := c.ShouldBindJSON(&commentDTO); err != nil{
+		c.JSON(400, gin.H{"error": "Invalid Request. Comment is required"})
+		return
+	}
+	_, err := bc.BlogUseCase.AddComment(c, blogID, userID.(string), commentDTO.Comment)
+	if err !=nil{
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to add you comment"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "comment added successfully!"})
+
+}
+
+func (bc *BlogController) ListAllComments(c *gin.Context){
+	blogID := c.Param("id")
+	if blogID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Blog ID is required"})
+		return
+	}
+
+	comments, err := bc.BlogUseCase.GetComments(c, blogID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch comments", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"comments": comments})
+
+}
+func (bc BlogController) DeleteCommentByAdmin(c *gin.Context){
+	comId := c.Param("id")
+	err := bc.BlogUseCase.RemoveComment(c, comId)
+	if err != nil{
+		c.JSON(http.StatusInternalServerError,gin.H{"error":err})
+		return
+	}
+c.JSON(http.StatusOK,gin.H{"Message":"comment deleted successfully"})
+}
+func (bc BlogController) DeleteCommentByAuth(c *gin.Context){
+	userId,_ := c.Get("x-user-id")
+	comId := c.Param("id")
+	isAuth, err := bc.BlogUseCase.IsComAuthor(c,comId,userId.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify author."})
+		return
+	}
+	if !isAuth {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "your aren't authorized to delete the comment."})
+	}
+	err = bc.BlogUseCase.RemoveComment(c, comId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete comment."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "comment deleted successfully."})
+}
 type BlogDTO struct {
 	Title   string   `json:"title" binding:"required"`
 	Content string   `json:"content" binding:"required"`
