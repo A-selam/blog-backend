@@ -8,12 +8,10 @@ require (
 	github.com/joho/godotenv v1.5.1
 	go.mongodb.org/mongo-driver/v2 v2.2.2
 	golang.org/x/crypto v0.40.0
+	golang.org/x/oauth2 v0.30.0
 )
 
-require (
-	cloud.google.com/go/compute/metadata v0.3.0 // indirect
-	golang.org/x/oauth2 v0.30.0 // indirect
-)
+require cloud.google.com/go/compute/metadata v0.3.0 // indirect
 
 require (
 	github.com/bytedance/sonic v1.13.3 // indirect
