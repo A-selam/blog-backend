@@ -55,6 +55,19 @@ func (ur userRepository) GetUserByID(ctx context.Context, id string) (*domain.Us
 	return DTOToDomain(user), nil
 }
 
+func (ur userRepository) GetUserByGoogleID(ctx context.Context, googleID string) (*domain.User, error) {
+	collection := ur.database.Collection(ur.collection)
+	filter := bson.D{{Key: "google_id", Value: googleID}}
+
+	var user *UserDTO
+	err := collection.FindOne(ctx, filter).Decode(&user)
+	if err != nil {
+		return nil, err
+	}
+
+	return DTOToDomain(user), nil
+}
+
 func (ur userRepository) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
 	collection := ur.database.Collection(ur.collection)
 	filter := bson.D{{Key: "email", Value: email}}
@@ -220,6 +233,7 @@ func (ur userRepository)GetUsers(ctx context.Context, page, limit int)([]*domain
 
 type UserDTO struct {
 	ID             bson.ObjectID `bson:"_id,omitempty"`
+	GoogleID       string        `bson:"google_id,omitempty"` // unique
 	Username       string        `bson:"username"` // unique
 	Email          string        `bson:"email"`    // unique
 	PasswordHash   string        `bson:"password_hash"`
@@ -236,6 +250,7 @@ type UserDTO struct {
 func DTOToDomain(d *UserDTO) *domain.User {
 	return &domain.User{
 		ID:             (d.ID).Hex(),
+		GoogleID:       d.GoogleID,
 		Username:       d.Username,
 		Email:          d.Email,
 		PasswordHash:   d.PasswordHash,
@@ -250,6 +265,7 @@ func DTOToDomain(d *UserDTO) *domain.User {
 
 func DomainToDTO(u domain.User) *UserDTO {
 	return &UserDTO{
+		GoogleID:       u.GoogleID,
 		Username:       u.Username,
 		Email:          u.Email,
 		PasswordHash:   u.PasswordHash,
