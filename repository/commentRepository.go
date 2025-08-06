@@ -92,17 +92,3 @@ type CommentResDTO struct {
 	}
 }
 
-type CommentResDTO struct {
-	BlogID    string `bson:"blogid" json:"blogid"`
-	AuthorID  string `bson:"authorid" json:"authorid"`
-	Content   string `bson:"content" 	json:"content"`
-	CreatedAt time.Time `bson:"created_at" json:"created_at"`
-}
-  func CommentDtoToDomain(dto *CommentResDTO) *domain.Comment {
-	return &domain.Comment{
-		BlogID:    dto.BlogID,
-		AuthorID:  dto.AuthorID,
-		Content:   dto.Content,
-		CreatedAt: dto.CreatedAt,
-	}
-}
