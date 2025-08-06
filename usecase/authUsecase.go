@@ -152,6 +152,65 @@ func (au *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (*
 	return user, tokenPair, nil
 }
 
+func (au *authUsecase) FindOrCreateGoogleUser(ctx context.Context, email, username, profilePicture, googleID string) (*domain.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, au.contextTimeout)
+	defer cancel()
+
+	found := true
+
+	user, err := au.userRepository.GetUserByGoogleID(ctx, googleID)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			found = false
+		} else {
+			return nil, err
+		}
+	}
+
+	if !found {
+		user = &domain.User{
+			GoogleID: googleID,
+			Email: email,
+			Username: username,
+			ProfilePicture: profilePicture,
+			Role: domain.RegularUser,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+
+		user, err = au.userRepository.CreateUser(ctx, user)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return user, nil
+}
+
+func (au *authUsecase) IssueTokenPair(ctx context.Context, user *domain.User) (*domain.TokenPair, error) {
+	jwtToken, err := au.jwtServices.GenerateToken(user.ID, user.Username, user.Email, string(user.Role))
+	if err != nil {
+		return nil, fmt.Errorf("Failed to generate JWT token: %v", err)
+	}
+
+	refToken, err := generateRefreshToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %v", err)
+	}
+
+	refreshToken, err := au.refreshTokenRepository.CreateRefreshToken(ctx, user.ID, refToken,)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create refresh token  %v", err)
+	}
+
+	tokenPair := &domain.TokenPair{
+		AccessToken: jwtToken,
+		RefreshToken: refreshToken.Token,
+		ExpiresIn: refreshToken.ExpiresAt,
+	}
+
+	return tokenPair, nil
+}
+
 func (au *authUsecase) ForgotPassword(ctx context.Context, email string) (token string, err error) {
 	res, err := au.userRepository.GetUserByEmail(ctx, email)
 	if err != nil{

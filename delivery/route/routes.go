@@ -30,6 +30,8 @@ func Setup(ac *controller.AuthController, bc *controller.BlogController, uc *con
 func NewAuthRouter(handler *controller.AuthController, group *gin.RouterGroup) {
 	group.POST("/auth/register", handler.Register)
 	group.POST("/auth/login", handler.Login )
+	group.GET("/auth/google/login", handler.GoogleLogin)
+	group.GET("/auth/google/callback", handler.GoogleCallback)
 	group.POST("/auth/logout", handler.Logout)
 	group.POST("/auth/refresh-token", handler.RefreshToken)
 	group.POST("/auth/forgot-password", handler.ForgotPassword )

@@ -2,21 +2,25 @@ package controller
 
 import (
 	"blog-backend/domain"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/oauth2"
 )
 
 type AuthController struct {
 	AuthUseCase domain.IAuthUseCase
+	googleConfig *oauth2.Config
 }
 
-func NewAuthController(au domain.IAuthUseCase) *AuthController {
+func NewAuthController(au domain.IAuthUseCase, googleConfig *oauth2.Config) *AuthController {
 	return &AuthController{
 		AuthUseCase: au,
+		googleConfig: googleConfig,
 	}
 }
 
@@ -134,6 +138,70 @@ func (ac *AuthController) RefreshToken(c *gin.Context) {
 	})
 }
 
+func (ac *AuthController) GoogleLogin(c *gin.Context){
+	url := ac.googleConfig.AuthCodeURL("state-secret-token", oauth2.AccessTypeOffline)
+	c.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+func (ac *AuthController) GoogleCallback(c *gin.Context) {
+	code := c.Query("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing Code"})
+	}
+
+	token, err := ac.googleConfig.Exchange(c, code)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error":"Failed to exchange token"})
+	}
+
+	client := ac.googleConfig.Client(c, token)
+	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user info"})
+		return
+	}
+	defer resp.Body.Close()
+
+	var googleUser struct{
+		Id      string `json:"id"`
+		Email   string `json:"email"`
+		Name    string `json:"name"`
+		Picture string `json:"picture"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&googleUser); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode user info"})
+		return
+	}
+
+	user, err := ac.AuthUseCase.FindOrCreateGoogleUser(c, googleUser.Email, googleUser.Name, googleUser.Picture, googleUser.Id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process Google login"})
+		return
+	}
+
+	tokenPair, err := ac.AuthUseCase.IssueTokenPair(c, user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to issue token pair"})
+		return
+	}
+
+	c.SetCookie(
+        "refresh_token",
+        tokenPair.RefreshToken,
+        int(time.Until(tokenPair.ExpiresIn).Seconds()),
+        "/",
+        "",
+        true,
+        true,
+    )
+
+    c.JSON(http.StatusOK, gin.H{
+        "User": loginResponseFromDomain(user),
+        "Token": tokenPair.AccessToken,
+    })
+}
+
 // DTO
 type signUpDTO struct {
 	Username string `json:"username"`
@@ -194,6 +262,7 @@ func signUpToDomain(s signUpDTO) *domain.User {
 	now := time.Now()
 	return &domain.User{
 		ID: "",
+		GoogleID: "",
 		Username: s.Username,
 		Email: s.Email,
 		PasswordHash: s.Password,

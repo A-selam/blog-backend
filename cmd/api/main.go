@@ -1,6 +1,7 @@
 package main
 
 import (
+	"blog-backend/config"
 	"blog-backend/delivery/controller"
 	"blog-backend/delivery/route"
 	"blog-backend/infrastructure"
@@ -33,13 +34,26 @@ func main() {
 		log.Fatal("DB_NAME is not set")
 	}
 
+	googleClientID := os.Getenv("AUTH_CLIENT_ID")
+	if googleClientID == "" {
+		log.Fatal("GOOGLE_CLIENT_ID is not set")
+	}
+
+	googleClientSecret := os.Getenv("AUTH_CLIENT_SECRET")
+	if googleClientSecret == "" {
+		log.Fatal("GOOGLE_CLIENT_SECRET is not set")
+	}
+
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET is not set")
 	}
+	
+	googleConfig := config.GoogleConfig(googleClientID, googleClientSecret)
 
 	client, db := infrastructure.NewDatabase(mongoURI, dbName)
 	defer client.Disconnect(context.TODO())
+
 	// Initialize services and repositories
     timeOut := 30 * time.Second
     jwtService := infrastructure.NewJWTService(jwtSecret)
@@ -58,7 +72,7 @@ func main() {
 	resetTR := repository.NewResetTokenRepository(db)
 	refreshTR := repository.NewRefreshTokenRepositoryFromDB(db)
 	au := usecase.NewAuthUsecase(ur, refreshTR, resetTR, jwtService, passwordService, timeOut)
-	ac := controller.NewAuthController(au)
+	ac := controller.NewAuthController(au, googleConfig)
 
     // Set up Gin router
     engine := gin.Default()

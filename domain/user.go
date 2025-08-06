@@ -14,7 +14,8 @@ const (
 )
 
 type User struct {
-	ID           string 
+	ID           string
+	GoogleID     string 
 	Username     string 
 	Email        string 
 	PasswordHash string 
@@ -37,6 +38,7 @@ type IUserRepository interface {
 	// User Management
 	CreateUser(ctx context.Context, user *User) (*User, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)
+	GetUserByGoogleID(ctx context.Context, googleID string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 	GetUserByUsernameAndEmail(ctx context.Context, username, email string) (*User, error)
