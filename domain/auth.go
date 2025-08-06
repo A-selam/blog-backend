@@ -9,6 +9,8 @@ type IAuthUseCase interface {
 	RefreshToken(ctx context.Context, refreshToken string) (*User, *TokenPair, error)
 	ForgotPassword(ctx context.Context, email string) (string, error)
 	ResetPassword(ctx context.Context, token, newPassword string) error
+	FindOrCreateGoogleUser(ctx context.Context, email, username, profilePicture, googleID string) (*User, error)
+	IssueTokenPair(ctx context.Context, user *User) (*TokenPair, error)
 }
 
 type IJWTService interface {
