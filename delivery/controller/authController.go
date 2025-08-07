@@ -223,6 +223,7 @@ type loginResponse struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Role     string `json:"role"`
+	Status   string `json:"status"`
 }
 
 type signUpDetailResponse struct {
@@ -230,6 +231,7 @@ type signUpDetailResponse struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Role     string `json:"role"`
+	Status   string `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
@@ -244,6 +246,7 @@ func loginResponseFromDomain(u *domain.User) loginResponse {
 		Username: u.Username,
 		Email:    u.Email,
 		Role:     string(u.Role),
+		Status:   string(u.Status),
 	}
 }
 
@@ -253,6 +256,7 @@ func signUpDetailResponseFromDomain(u *domain.User) signUpDetailResponse {
 		Username: u.Username,
 		Email:    u.Email,
 		Role:     string(u.Role),
+		Status:   string(u.Status),
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,
 
@@ -271,6 +275,7 @@ func signUpToDomain(s signUpDTO) *domain.User {
 		Email: s.Email,
 		PasswordHash: s.Password,
 		Role: domain.RegularUser,
+		Status: domain.Inactive,
 		CreatedAt: now,
 		UpdatedAt: now,
 
@@ -316,25 +321,30 @@ func (ac *AuthController)ForgotPassword(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Invalid request: email is required"})
 		return
 	}
-	token, err := ac.AuthUseCase.ForgotPassword(c, request.Email)
+	 err := ac.AuthUseCase.ForgotPassword(c, request.Email)
 	if err != nil {	
 		c.JSON(500, gin.H{"error": "Failed to process forgot password request."})
 		return	
 
 	}
-	c.JSON(200, gin.H{"message": "Password reset", "token": token})
+	c.JSON(200, gin.H{"message": "Password reset email sent successfully. Please check your inbox."})
 }
 func (ac *AuthController) ResetPassword(c *gin.Context) {
+	token:= c.Query("token")
+	if token == "" {	
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Reset token is required"})
+		return
+	}
+
     var request struct {
         Password string `json:"password" binding:"required,min=8"`
-        Token    string `json:"token" binding:"required"`
     }
     if err := c.ShouldBindJSON(&request); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: token and password (minimum 8 characters) are required"})
         return
     }
 
-    err := ac.AuthUseCase.ResetPassword(c, request.Token, request.Password)
+    err := ac.AuthUseCase.ResetPassword(c, token, request.Password)
     if err != nil {
         switch err {
         case domain.ErrTokenNotFound:

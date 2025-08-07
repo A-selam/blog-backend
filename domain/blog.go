@@ -76,7 +76,6 @@ type IReactionRepository interface {
 	// Reactions
 	AddReaction(ctx context.Context, reaction *Reaction) error
 	RemoveReaction(ctx context.Context, blogID, userID string) error
-	GetReactionsForBlog(ctx context.Context, blogID string) ([]*Reaction, error)
 	CheckReactionExists(ctx context.Context, blogID, userID string) (*Reaction, bool, error)
 	UpdateReaction(ctx context.Context, blogID, userID string, reactionType ReactionType) error
 }

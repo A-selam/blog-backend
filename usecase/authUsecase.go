@@ -17,10 +17,12 @@ import (
 type authUsecase struct {
 	userRepository         domain.IUserRepository
 	refreshTokenRepository domain.IRefreshTokenRepository
-	resetTokenRepository   domain.IResetTokenRepository
-	jwtServices            domain.IJWTService
-	passwordServices       domain.IPasswordService
-	contextTimeout         time.Duration
+	resetTokenRepository domain.IResetTokenRepository
+	jwtServices      domain.IJWTService
+	passwordServices domain.IPasswordService
+	emailServices domain.IEmailServices
+	activationTokenRepository domain.IActivationTokenRepository
+	contextTimeout        time.Duration
 }
 
 func NewAuthUsecase(
@@ -29,15 +31,19 @@ func NewAuthUsecase(
 	resetTokenRepository domain.IResetTokenRepository,
 	jwtServices domain.IJWTService,
 	passwordServices domain.IPasswordService,
+	emailServices domain.IEmailServices,
+	activationTokenRepository domain.IActivationTokenRepository,
 	timeout time.Duration,
 ) domain.IAuthUseCase {
 	return &authUsecase{
-		userRepository:         userRepository,
-		refreshTokenRepository: refreshTokenRepository,
-		resetTokenRepository:   resetTokenRepository,
-		jwtServices:            jwtServices,
-		passwordServices:       passwordServices,
-		contextTimeout:         timeout,
+		userRepository: userRepository,   
+		refreshTokenRepository: refreshTokenRepository, 
+		resetTokenRepository: resetTokenRepository,  
+		jwtServices: jwtServices,
+		passwordServices: passwordServices,
+		emailServices: emailServices,
+		activationTokenRepository: activationTokenRepository,
+		contextTimeout: timeout, 
 	}
 }
 
@@ -45,7 +51,15 @@ func (au *authUsecase) Register(ctx context.Context, user *domain.User) (*domain
 	ctx, cancel := context.WithTimeout(ctx, au.contextTimeout)
 	defer cancel()
 
-	_, err := au.userRepository.GetUserByUsernameAndEmail(ctx, user.Username, user.Email)
+	_, err := au.userRepository.GetUserByEmail(ctx, user.Email)
+	if err == nil {
+		return nil, fmt.Errorf("email is already taken")
+	}
+	if err != mongo.ErrNoDocuments {
+		return nil, err 
+	}
+
+	_, err = au.userRepository.GetUserByUsername(ctx, user.Username)
 	if err == nil {
 		return nil, fmt.Errorf("username is already taken")
 	}
@@ -60,6 +74,17 @@ func (au *authUsecase) Register(ctx context.Context, user *domain.User) (*domain
 	user.PasswordHash = hashedPassword
 
 	createdUser, err := au.userRepository.CreateUser(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	// activation email 
+	activationToken, err := au.activationTokenRepository.CreateActivationToken(ctx, createdUser.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = au.emailServices.SendActivationEmail(createdUser.Email, activationToken)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +111,7 @@ func (au *authUsecase) Login(ctx context.Context, email, password string) (*doma
 		return nil, nil, fmt.Errorf("Failed to generate JWT token: %v", err)
 	}
 
-	refToken, err := generateRefreshToken()
+	refToken, err := generateToken()
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to generate refresh token: %v", err)
 	}
@@ -143,7 +168,7 @@ func (au *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (*
 		return nil, nil, fmt.Errorf("Failed to generate JWT token: %v", err)
 	}
 
-	newRefreshToken, err := generateRefreshToken()
+	newRefreshToken, err := generateToken()
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to generate new refresh token: %v", err)
 	}
@@ -199,7 +224,7 @@ func (au *authUsecase) IssueTokenPair(ctx context.Context, user *domain.User) (*
 		return nil, fmt.Errorf("Failed to generate JWT token: %v", err)
 	}
 
-	refToken, err := generateRefreshToken()
+	refToken, err := generateToken()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %v", err)
 	}
@@ -218,10 +243,10 @@ func (au *authUsecase) IssueTokenPair(ctx context.Context, user *domain.User) (*
 	return tokenPair, nil
 }
 
-func (au *authUsecase) ForgotPassword(ctx context.Context, email string) (token string, err error) {
+func (au *authUsecase) ForgotPassword(ctx context.Context, email string) ( err error) {
 	res, err := au.userRepository.GetUserByEmail(ctx, email)
-	if err != nil {
-		return "", domain.ErrInvalidUser
+	if err != nil{
+		return  domain.ErrInvalidUser
 	}
 
 	resetToken := &domain.PasswordResetToken{
@@ -233,12 +258,16 @@ func (au *authUsecase) ForgotPassword(ctx context.Context, email string) (token 
 		CreatedAt: time.Now(),
 	}
 
-	createdToken, err := au.resetTokenRepository.CreatePasswordResetToken(ctx, resetToken)
-	if err != nil {
-		return "", err
+	createdToken, err := au.resetTokenRepository.CreatePasswordResetToken(ctx,resetToken)
+	if err != nil{
+		return  err
+	}
+	err = au.emailServices.SendPasswordResetEmail(email, createdToken.Token)
+	if err != nil {	
+		return fmt.Errorf("failed to send password reset email: %v", err)
 	}
 
-	return createdToken.Token, nil
+	return nil
 }
 
 func (au *authUsecase) ResetPassword(ctx context.Context, token, newPassword string) error {
@@ -277,7 +306,7 @@ func (au *authUsecase) ResetPassword(ctx context.Context, token, newPassword str
 	return nil
 }
 
-func generateRefreshToken() (string, error) {
+func generateToken() (string, error) {
 	b := make([]byte, 32)
 	_, err := rand.Read(b)
 	if err != nil {

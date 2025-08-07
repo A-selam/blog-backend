@@ -117,10 +117,7 @@ func (rr *reactionRepository) UpdateReaction(ctx context.Context, blogID, userID
 	return nil
 }
 
-func (rr *reactionRepository) GetReactionsForBlog(ctx context.Context, blogID string) ([]*domain.Reaction, error) {
-	// TODO: implement this function
-	return nil, nil
-}
+
 
 
 type ReactionDTO struct {

@@ -13,13 +13,21 @@ const (
 	Admin       Role = "Admin"
 )
 
+type Status string
+
+const (
+	Active   Status = "active"
+	Inactive Status = "inactive"
+)
+
 type User struct {
 	ID           string
 	GoogleID     string 
 	Username     string 
 	Email        string 
 	PasswordHash string 
-	Role         Role   
+	Role         Role
+	Status       Status   
 	CreatedAt    time.Time 
 	UpdatedAt    time.Time 
 
@@ -47,7 +55,7 @@ type IUserRepository interface {
 	DeleteUser(ctx context.Context, id string) error
 
 	// Profile Management
-	UpdateProfile(ctx context.Context, userID string, bio, profilePicture, contactInfo string) error
+	UpdateProfile(ctx context.Context, userID string, updates map[string]interface{}) error
 
 	// Admin Actions
 	PromoteToAdmin(ctx context.Context, userID string) error
