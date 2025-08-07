@@ -17,6 +17,7 @@ func Setup(ac *controller.AuthController, bc *controller.BlogController, uc *con
 	// ============ Protected Routes (User) ============
 	userRouter := engine.Group("/api")
 	userRouter.Use(middleware.NewAuthMiddleware(jwtService))
+	userRouter.Use(middleware.NewStatusCheckMiddleware())
 	NewUserRouter(uc, userRouter)
 	NewBlogAuthRouter(bc, gc, userRouter) // Authenticated blog routes (create/update/delete)
 
@@ -24,11 +25,13 @@ func Setup(ac *controller.AuthController, bc *controller.BlogController, uc *con
 	adminRouter := engine.Group("/api/admin")
 	adminRouter.Use(middleware.NewAuthMiddleware(jwtService))
 	adminRouter.Use(middleware.NewAdminMiddleware())
+	adminRouter.Use(middleware.NewStatusCheckMiddleware())
 	NewAdminRouter(uc, bc, adminRouter)
 }
 
 func NewAuthRouter(handler *controller.AuthController, group *gin.RouterGroup) {
 	group.POST("/auth/register", handler.Register)
+	group.GET("/auth/activate", handler.Activate)
 	group.POST("/auth/login", handler.Login )
 	group.GET("/auth/google/login", handler.GoogleLogin)
 	group.GET("/auth/google/callback", handler.GoogleCallback)

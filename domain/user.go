@@ -45,6 +45,7 @@ type Login struct {
 type IUserRepository interface {
 	// User Management
 	CreateUser(ctx context.Context, user *User) (*User, error)
+	ActivateUser(ctx context.Context, userID string) error
 	GetUserByID(ctx context.Context, id string) (*User, error)
 	GetUserByGoogleID(ctx context.Context, googleID string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)

@@ -4,6 +4,7 @@ import "context"
 
 type IAuthUseCase interface {
 	Register(ctx context.Context, user *User) (*User, error)
+	Activate(ctx context.Context, tokenID string) error
 	Login(ctx context.Context, email, password string) (*User, *TokenPair, error)
 	Logout(ctx context.Context, refreshToken string) error
 	RefreshToken(ctx context.Context, refreshToken string) (*User, *TokenPair, error)
