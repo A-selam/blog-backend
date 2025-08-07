@@ -84,6 +84,7 @@ func (es *emailServices) SendPasswordResetEmail(email, resetToken string) error 
                 ">Reset Password</a>
                 <p>If the button doesn't work, copy and paste this link in your browser:</p>
                 <p>%s</p>
+                <p>If you did not request this, please ignore this email.</p>
             </body>
         </html>
     `, resetLink, resetLink)
