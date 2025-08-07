@@ -73,7 +73,7 @@ func NewAdminRouter(userHandler *controller.UserController, blogHandler *control
 	group.GET("/users", userHandler.GetUsers)
 	group.POST("/users/:id/promote", userHandler.PromoteUser)
 	group.POST("/users/:id/demote", userHandler.DemoteUser)
-	group.DELETE("/users/:id")
+	group.DELETE("/users/:id", userHandler.DeleteUser)
 
 	// Blog Moderation
 	group.DELETE("/blogs/:id", blogHandler.DeleteBlogByAdmin)

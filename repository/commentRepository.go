@@ -80,7 +80,7 @@ func (cr *commentRepository) IsComAuthor(ctx context.Context, comId, userId stri
 type CommentResDTO struct {
 	BlogID    string `bson:"blogid" json:"blogid"`
 	AuthorID  string `bson:"authorid" json:"authorid"`
-	Content   string `bson:"content" 	json:"content"`
+	Content   string `bson:"content" json:"content"`
 	CreatedAt time.Time `bson:"created_at" json:"created_at"`
 }
   func CommentDtoToDomain(dto *CommentResDTO) *domain.Comment {
