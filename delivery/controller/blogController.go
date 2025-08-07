@@ -4,6 +4,7 @@ import (
 	"blog-backend/domain"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -208,15 +209,15 @@ func (bc *BlogController) CreateComment(c *gin.Context) {
 		return
 
 	}
-	type CommentDTO struct {
-		Comment string `json:"comment" binding:"required"`
-	}
+	
 	var commentDTO CommentDTO
 	if err := c.ShouldBindJSON(&commentDTO); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid Request. Comment is required"})
 		return
 	}
-	_, err := bc.BlogUseCase.AddComment(c, blogID, userID.(string), commentDTO.Comment)
+	comment := CommentDtoToDomain(&commentDTO, blogID, userID.(string))
+	_, err := bc.BlogUseCase.AddComment(c, comment)
+	
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to add you comment"})
 		return
@@ -315,6 +316,10 @@ func (bc BlogController) DeleteCommentByAuth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "comment deleted successfully."})
 }
 
+type CommentDTO struct{
+		Content string `json:"content" binding:"required"`
+}
+
 type BlogDTO struct {
 	Title   string   `json:"title" binding:"required"`
 	Content string   `json:"content" binding:"required"`
@@ -332,6 +337,14 @@ func DtoToDomain(blogDTO *BlogDTO, authorID string) *domain.Blog {
 		DislikeCount: 0,
 		CommentCount: 0,
 	}
+}
+
+func CommentDtoToDomain(commentDTO *CommentDTO, blogID, authorID string) *domain.Comment {
+	return &domain.Comment{
+		BlogID:    blogID,
+		AuthorID:  authorID,
+		Content:   commentDTO.Content,
+		CreatedAt: time.Now(),}
 }
 
 type BlogUpdateDTO struct {

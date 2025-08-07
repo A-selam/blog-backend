@@ -70,7 +70,10 @@ func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog
 	}
 
 	errChan := make(chan error, 1)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func ()  {
+		defer wg.Done()
 		goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer goroutineCancel()
 	err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, "view_count", 1)
@@ -80,7 +83,10 @@ func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog
 
 	}
 	}()
+	go func() {
+	wg.Wait()
 	close(errChan)
+	}()
 	for err := range errChan {
 		if err != nil {	
 			return nil, err
@@ -238,7 +244,10 @@ func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string
 		return errors.New("no reaction found to remove")
 	}
 	errChan := make(chan error, 1)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func(){
+		defer wg.Done()
 		goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer goroutineCancel()
 	if string(rxn.Type) == string(domain.Like) {
@@ -256,7 +265,11 @@ func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string
 	}
 
 	}()
+	go func() {
+	wg.Wait()
 	close(errChan)
+
+	}()
 	for err := range errChan {
 		if err != nil {
 			return err
@@ -267,32 +280,32 @@ func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string
 }
 
 // Comments
-func (bu *blogUsecase) AddComment(ctx context.Context, blogID, authorID string, content string) (*domain.Comment, error) {
+func (bu *blogUsecase) AddComment(ctx context.Context, comment *domain.Comment) (*domain.Comment, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
-	comment := &domain.Comment{
-		BlogID:    blogID,
-		AuthorID:  authorID,
-		Content:   content,
-		CreatedAt: time.Now(),
-	}
-
+	
 	res, err := bu.blogCommentRepository.AddComment(ctx, comment)
 	if err != nil {
 		return nil, err
 	}
 	errcChan := make(chan error, 1)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer goroutineCancel()
-	err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, "comment_count", 1)
+	err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, comment.BlogID, "comment_count", 1)
 	if err != nil {
-		log.Printf("Error updating comment count for blog %s: %v", blogID, err)
+		log.Printf("Error updating comment count for blog %s: %v", comment.BlogID, err)
 		errcChan <- fmt.Errorf("failed to update comment count: %v", err)
 		return
 	}
 }()
+	go func() {
+	wg.Wait()
 	close(errcChan)
+	}()
 	for err := range errcChan {
 		if err != nil {
 			return nil, err

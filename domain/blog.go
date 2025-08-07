@@ -104,7 +104,7 @@ type IBlogUseCase interface {
 	RemoveReaction(ctx context.Context, blogID, userID string) error
 
 	// Comments
-	AddComment(ctx context.Context, blogID, authorID string, content string) (*Comment, error)
+	AddComment(ctx context.Context, comment *Comment) (*Comment, error)
 	GetComments(ctx context.Context, blogID string) ([]*Comment, error)
 	RemoveComment(ctx context.Context,commentID string)(error)
 	IsComAuthor(ctx context.Context, comId, userId string) (bool,error)
