@@ -14,6 +14,8 @@ type Config struct {
 	GoogleClientSecret string
 	JWTSecret string
 	GeminiAPIKey string
+	RedisURL string
+
 }
 
 func LoadConfig() (*Config, error){
@@ -60,6 +62,11 @@ func LoadConfig() (*Config, error){
 		log.Fatal("GEMINI_API_KEY is not set")
 		return nil, err
 	}
+	RedisUrl := os.Getenv("REDIS_URL")
+	if RedisUrl == "" {
+		log.Fatal("REDIS_URL is not set")
+		return nil, err
+	}
 
 	return &Config{
 		MongoURI : MongoURI,
@@ -68,5 +75,6 @@ func LoadConfig() (*Config, error){
 		GoogleClientSecret : GoogleClientSecret,
 		JWTSecret : JWTSecret,
 		GeminiAPIKey : GeminiAPIKey,
+		RedisURL: RedisUrl,
 	}, nil
 }
