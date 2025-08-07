@@ -135,7 +135,6 @@ func (ur userRepository) UpdateUser(ctx context.Context, id string, updates map[
 			}
 		}
 	}
-
 	delete(updates, "role")
 
 	filter := bson.D{{Key: "_id", Value: oid}}
@@ -159,8 +158,14 @@ func (ur userRepository) DeleteUser(ctx context.Context, id string) error {
 }
 
 // Profile Management
-func (ur userRepository) UpdateProfile(ctx context.Context, userID string, bio, profilePicture, contactInfo string) error {
-	// TODO: Implement the function
+func (ur userRepository) UpdateProfile(ctx context.Context, userID string, updates map[string]interface{}) error {
+		updates["updated_at"] = time.Now()
+
+	err := ur.UpdateUser(ctx, userID, updates)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

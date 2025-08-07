@@ -55,7 +55,7 @@ type IUserRepository interface {
 	DeleteUser(ctx context.Context, id string) error
 
 	// Profile Management
-	UpdateProfile(ctx context.Context, userID string, bio, profilePicture, contactInfo string) error
+	UpdateProfile(ctx context.Context, userID string, updates map[string]interface{}) error
 
 	// Admin Actions
 	PromoteToAdmin(ctx context.Context, userID string) error
