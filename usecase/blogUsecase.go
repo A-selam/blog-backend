@@ -5,7 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"sync"
 	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type blogUsecase struct {
@@ -16,10 +20,7 @@ type blogUsecase struct {
 	contextTimeout         time.Duration
 }
 
-// RemoveComment implements domain.IBlogUseCase.
-func (bu *blogUsecase) RemoveComment(ctx context.Context, commentID string) error {
-	panic("unimplemented")
-}
+
 
 func NewBlogUsecase(
 	blogRepository domain.IBlogRepository,
@@ -67,11 +68,31 @@ func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog
 	if err != nil {
 		return nil, err
 	}
-	err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, "view_count", 1)
-	if err != nil {
-		return nil, err
-	}
 
+	errChan := make(chan error, 1)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func ()  {
+		defer wg.Done()
+		goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer goroutineCancel()
+	err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, "view_count", 1)
+	if err != nil {		errChan <- err
+		log.Printf("Error updating view count for blog %s: %v", blogID, err)
+		return
+
+	}
+	}()
+	go func() {
+	wg.Wait()
+	close(errChan)
+	}()
+	for err := range errChan {
+		if err != nil {	
+			return nil, err
+		}
+	
+	}
 	return blog, nil
 }
 
@@ -110,8 +131,11 @@ func (bu *blogUsecase) SearchBlogs(ctx context.Context, query string) ([]*domain
 	return blogs, nil
 }
 
-// Reactions
 func (bu *blogUsecase) AddReaction(ctx context.Context, blogID, userID string, reactionType string) error {
+	if _, err := bson.ObjectIDFromHex(blogID); err != nil {
+		return errors.New("invalid blog ID")
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
 
@@ -121,58 +145,88 @@ func (bu *blogUsecase) AddReaction(ctx context.Context, blogID, userID string, r
 		Type:      domain.ReactionType(reactionType),
 		CreatedAt: time.Now(),
 	}
-
 	rxn, noReaction, err := bu.blogReactionRepository.CheckReactionExists(ctx, blogID, userID)
 	if err != nil {
+		log.Printf("Error checking reaction: %v", err)
 		return err
 	}
+
+	goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer goroutineCancel()
+
+	// Channel to collect errors from goroutines
+	errChan := make(chan error, 1)
+	var wg sync.WaitGroup
 
 	if noReaction {
 		err = bu.blogReactionRepository.AddReaction(ctx, reaction)
 		if err != nil {
+			log.Printf("Error adding reaction: %v", err)
 			return err
 		}
-		if reactionType == string(domain.Like) {
-			err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), 1)
-			if err != nil {
-				return err
+
+		// Asynchronously update metrics
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var field string
+			if reactionType == string(domain.Like) {
+				field = string(domain.LikeCountField)
+			} else {
+				field = string(domain.DislikeCountField)
 			}
-		} else {
-			err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), 1)
-			if err != nil {
-				return err
+			if err := bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, field, 1); err != nil {
+				log.Printf("Failed to update %s for blog %s: %v", field, blogID, err)
+				errChan <- fmt.Errorf("failed to update %s: %v", field, err)
 			}
-		}
-		return nil
+		}()
 	} else if string(rxn.Type) != reactionType {
 		err = bu.blogReactionRepository.UpdateReaction(ctx, blogID, userID, domain.ReactionType(reactionType))
 		if err != nil {
+			log.Printf("Error updating reaction: %v", err)
 			return err
 		}
 
-		if reactionType == string(domain.Like) {
-			err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), 1)
-			if err != nil {
-				return err
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if reactionType == string(domain.Like) {
+				if err := bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, string(domain.LikeCountField), 1); err != nil {
+					log.Printf("Failed to increment like count for blog %s: %v", blogID, err)
+					errChan <- fmt.Errorf("failed to increment like count: %v", err)
+				}
+				if err := bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, string(domain.DislikeCountField), -1); err != nil {
+					log.Printf("Failed to decrement dislike count for blog %s: %v", blogID, err)
+					errChan <- fmt.Errorf("failed to decrement dislike count: %v", err)
+				}
+			} else if reactionType == string(domain.Dislike) {
+				if err := bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, string(domain.DislikeCountField), 1); err != nil {
+					log.Printf("Failed to increment dislike count for blog %s: %v", blogID, err)
+					errChan <- fmt.Errorf("failed to increment dislike count: %v", err)
+				}
+				if err := bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, string(domain.LikeCountField), -1); err != nil {
+					log.Printf("Failed to decrement like count for blog %s: %v", blogID, err)
+					errChan <- fmt.Errorf("failed to decrement like count: %v", err)
+				}
 			}
-			err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), -1)
-			if err != nil {
-				return err
-			}
-		} else if reactionType == string(domain.Dislike) {
-			err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), 1)
-			if err != nil {
-				return err
-			}
-			err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), -1)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		}()
+	} else {
+		return errors.New("reaction already exists with the same type")
 	}
 
-	return errors.New("reaction already exists with the same type")
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	for err := range errChan {
+		if err != nil {
+
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string) error {
@@ -182,51 +236,80 @@ func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string
 	if err != nil {
 		return err
 	}
-	if noReaction {
-		return errors.New("no reaction found to remove")
-	}
-	fmt.Println("Reaction found:", rxn.Type, domain.Like)
-	if string(rxn.Type) == string(domain.Like) {
-		err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.LikeCountField), -1)
-		if err != nil {
-			return err
-		}
-	} else if rxn.Type == domain.Dislike {
-		err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, string(domain.DislikeCountField), -1)
-		if err != nil {
-			return err
-		}
-	} else {
-		return errors.New("reaction type not recognized")
-	}
-
 	err = bu.blogReactionRepository.RemoveReaction(ctx, blogID, userID)
 	if err != nil {
 		return err
+	}
+	if noReaction {
+		return errors.New("no reaction found to remove")
+	}
+	errChan := make(chan error, 1)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func(){
+		defer wg.Done()
+		goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer goroutineCancel()
+	if string(rxn.Type) == string(domain.Like) {
+		err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, string(domain.LikeCountField), -1)
+		if err != nil {
+			errChan <- err
+		}
+	} else if rxn.Type == domain.Dislike {
+		err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, string(domain.DislikeCountField), -1)
+		if err != nil {
+			errChan <- err
+		}
+	}else {
+		 errChan <- errors.New("reaction type not recognized")
+	}
+
+	}()
+	go func() {
+	wg.Wait()
+	close(errChan)
+
+	}()
+	for err := range errChan {
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-
 // Comments
-func (bu *blogUsecase) AddComment(ctx context.Context, blogID, authorID string, content string) (*domain.Comment, error) {
+func (bu *blogUsecase) AddComment(ctx context.Context, comment *domain.Comment) (*domain.Comment, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
-	comment := &domain.Comment{
-		BlogID:    blogID,
-		AuthorID:  authorID,
-		Content:   content,
-		CreatedAt: time.Now(),
-	}
-
+	
 	res, err := bu.blogCommentRepository.AddComment(ctx, comment)
 	if err != nil {
 		return nil, err
 	}
-	err = bu.blogRepository.UpdateBlogMetrics(ctx, blogID, "comment_count", 1)
+	errcChan := make(chan error, 1)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer goroutineCancel()
+	err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, comment.BlogID, "comment_count", 1)
 	if err != nil {
-		return nil, err
+		log.Printf("Error updating comment count for blog %s: %v", comment.BlogID, err)
+		errcChan <- fmt.Errorf("failed to update comment count: %v", err)
+		return
+	}
+}()
+	go func() {
+	wg.Wait()
+	close(errcChan)
+	}()
+	for err := range errcChan {
+		if err != nil {
+			return nil, err
+		}
 	}
 	return res, nil
 }
@@ -263,4 +346,10 @@ func (bu *blogUsecase) IsBlogAuthor(ctx context.Context, blogID, userID string) 
 		return false, err
 	}
 	return isAuthor, nil
+}
+
+func (bu *blogUsecase) RemoveComment(ctx context.Context,commentID string)(error){
+	ctx, cancel := context.WithTimeout(ctx,bu.contextTimeout)
+	defer cancel()
+	return bu.blogCommentRepository.DeleteComment(ctx,commentID)
 }

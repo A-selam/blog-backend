@@ -12,9 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-
-
-
 type blogRepository struct {
 	database   *mongo.Database
 	collection string
@@ -26,7 +23,6 @@ func NewBlogRepositoryFromDB(db *mongo.Database) domain.IBlogRepository {
 		collection: "blogs",
 	}
 }
-
 
 // Blog CRUD
 func (br *blogRepository) CreateBlog(ctx context.Context, blog *domain.Blog) (*domain.Blog, error) {
@@ -47,8 +43,6 @@ func (br *blogRepository) CreateBlog(ctx context.Context, blog *domain.Blog) (*d
 	return blog, nil
 }
 
-
-
 func (br *blogRepository) GetBlogByID(ctx context.Context, id string) (*domain.Blog, error) {
 	collection := br.database.Collection(br.collection)
 	oid, err := bson.ObjectIDFromHex(id)
@@ -65,37 +59,37 @@ func (br *blogRepository) GetBlogByID(ctx context.Context, id string) (*domain.B
 	return DtoToDomain(&blog), nil
 }
 func (br *blogRepository) UpdateBlog(ctx context.Context, id string, userID string, updates map[string]interface{}) error {
-    collection := br.database.Collection(br.collection)
-    oid, err := bson.ObjectIDFromHex(id)
-    if err != nil {
-        return err
-    }
-    var blog BlogResponseDTO
-    filter := bson.M{"_id": oid}
-    err = collection.FindOne(ctx, filter).Decode(&blog)
-    if err != nil {
-        return err
-    }
+	collection := br.database.Collection(br.collection)
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	var blog BlogResponseDTO
+	filter := bson.M{"_id": oid}
+	err = collection.FindOne(ctx, filter).Decode(&blog)
+	if err != nil {
+		return err
+	}
 
-    authorID := blog.AuthorID.Hex()
-    if authorID != userID {
-        
-        userRepo := NewUserRepositoryFromDB(br.database)
-        user, err := userRepo.GetUserByID(ctx, userID)
-        if err != nil {
+	authorID := blog.AuthorID.Hex()
+	if authorID != userID {
+
+		userRepo := NewUserRepositoryFromDB(br.database)
+		user, err := userRepo.GetUserByID(ctx, userID)
+		if err != nil {
 			log.Print("unauthorized: user not found")
-            return fmt.Errorf("unauthorized: user not found")
-        }
-        if user.Role != domain.Admin {
+			return fmt.Errorf("unauthorized: user not found")
+		}
+		if user.Role != domain.Admin {
 			log.Print("unauthorized: not author or admin")
 
-            return fmt.Errorf("unauthorized: not author or admin")
-        }
-    }
+			return fmt.Errorf("unauthorized: not author or admin")
+		}
+	}
 
-    update := bson.M{"$set": updates}
-    _, err = collection.UpdateOne(ctx, filter, update)
-    return err
+	update := bson.M{"$set": updates}
+	_, err = collection.UpdateOne(ctx, filter, update)
+	return err
 }
 func (br *blogRepository) DeleteBlog(ctx context.Context, id string) error {
 	collection := br.database.Collection(br.collection)
@@ -107,10 +101,8 @@ func (br *blogRepository) DeleteBlog(ctx context.Context, id string) error {
 	return err
 }
 
-
-
 // Blog Listing
-func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int, field string) ([]*domain.Blog,int64, error) {
+func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int, field string) ([]*domain.Blog, int64, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -123,9 +115,8 @@ func (br *blogRepository) ListBlogs(ctx context.Context, page, limit int, field 
 	findOptions := options.Find()
 	findOptions.SetSkip(skip)
 	findOptions.SetLimit(lim)
-	findOptions.SetSort(bson.D{{Key: field, Value: -1}}) 
+	findOptions.SetSort(bson.D{{Key: field, Value: -1}})
 
-	
 	cursor, err := collection.Find(ctx, bson.M{}, findOptions)
 	if err != nil {
 		return nil, 0, err
@@ -194,8 +185,6 @@ func (br *blogRepository) SearchBlogs(ctx context.Context, query string) ([]*dom
 	return blogs, nil
 }
 
-
-
 func (br *blogRepository) UpdateBlogMetrics(ctx context.Context, blogID string, field string, reaction int) error {
 	collection := br.database.Collection(br.collection)
 	oid, err := bson.ObjectIDFromHex(blogID)
@@ -212,7 +201,6 @@ func (br *blogRepository) UpdateBlogMetrics(ctx context.Context, blogID string, 
 	return err
 }
 
-
 // i added this function because we didn't have a function that evaluate blog authers k
 func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (bool, error) {
 	collection := br.database.Collection(br.collection)
@@ -220,7 +208,7 @@ func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (
 	if err != nil {
 		return false, err
 	}
-	ouid,err := bson.ObjectIDFromHex(userID)
+	ouid, err := bson.ObjectIDFromHex(userID)
 	if err != nil {
 		return false, err
 	}
@@ -233,17 +221,14 @@ func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (
 	return count > 0, nil
 }
 
-
-
-
 type BlogResponseDTO struct {
-	ID        bson.ObjectID `bson:"_id"`
-	Title     string        `bson:"title" binding:"required"`
-	Content   string        `bson:"content" binding:"required"`
-	AuthorID  bson.ObjectID `bson:"author_id" binding:"required"`
-	Tags      []string      `bson:"tags" binding:"required"`
-	CreatedAt time.Time     `bson:"created_at"`
-	UpdatedAt time.Time     `bson:"updated_at"`
+	ID           bson.ObjectID `bson:"_id"`
+	Title        string        `bson:"title" binding:"required"`
+	Content      string        `bson:"content" binding:"required"`
+	AuthorID     bson.ObjectID `bson:"author_id" binding:"required"`
+	Tags         []string      `bson:"tags" binding:"required"`
+	CreatedAt    time.Time     `bson:"created_at"`
+	UpdatedAt    time.Time     `bson:"updated_at"`
 	ViewCount    int           `bson:"view_count"`
 	LikeCount    int           `bson:"like_count"`
 	DislikeCount int           `bson:"dislike_count"`
@@ -251,12 +236,12 @@ type BlogResponseDTO struct {
 }
 
 type BlogDTO struct {
-	Title     string        `bson:"title" binding:"required"`
-	Content   string        `bson:"content" binding:"required"`
-	AuthorID  bson.ObjectID `bson:"author_id" binding:"required"`
-	Tags      []string      `bson:"tags" binding:"required"`
-	CreatedAt time.Time     `bson:"created_at"`
-	UpdatedAt time.Time     `bson:"updated_at"`
+	Title        string        `bson:"title" binding:"required"`
+	Content      string        `bson:"content" binding:"required"`
+	AuthorID     bson.ObjectID `bson:"author_id" binding:"required"`
+	Tags         []string      `bson:"tags" binding:"required"`
+	CreatedAt    time.Time     `bson:"created_at"`
+	UpdatedAt    time.Time     `bson:"updated_at"`
 	ViewCount    int           `bson:"view_count"`
 	LikeCount    int           `bson:"like_count"`
 	DislikeCount int           `bson:"dislike_count"`
@@ -270,12 +255,12 @@ func DomainToDto(blog *domain.Blog) (*BlogDTO, error) {
 	}
 	now := time.Now()
 	return &BlogDTO{
-		Title:     blog.Title,
-		Content:   blog.Content,
-		AuthorID:  oid,
-		Tags:      blog.Tags,
-		CreatedAt: now,
-		UpdatedAt: now,
+		Title:        blog.Title,
+		Content:      blog.Content,
+		AuthorID:     oid,
+		Tags:         blog.Tags,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 		ViewCount:    blog.ViewCount,
 		LikeCount:    blog.LikeCount,
 		DislikeCount: blog.DislikeCount,
@@ -285,19 +270,16 @@ func DomainToDto(blog *domain.Blog) (*BlogDTO, error) {
 
 func DtoToDomain(blogDTO *BlogResponseDTO) *domain.Blog {
 	return &domain.Blog{
-		ID:        blogDTO.ID.Hex(),
-		Title:     blogDTO.Title,
-		Content:   blogDTO.Content,
-		AuthorID:  blogDTO.AuthorID.Hex(),
-		Tags:      blogDTO.Tags,
-		CreatedAt: blogDTO.CreatedAt,
-		UpdatedAt: blogDTO.UpdatedAt,
-		ViewCount: blogDTO.ViewCount,
-		LikeCount: blogDTO.LikeCount,
-		DislikeCount: blogDTO.DislikeCount,	
+		ID:           blogDTO.ID.Hex(),
+		Title:        blogDTO.Title,
+		Content:      blogDTO.Content,
+		AuthorID:     blogDTO.AuthorID.Hex(),
+		Tags:         blogDTO.Tags,
+		CreatedAt:    blogDTO.CreatedAt,
+		UpdatedAt:    blogDTO.UpdatedAt,
+		ViewCount:    blogDTO.ViewCount,
+		LikeCount:    blogDTO.LikeCount,
+		DislikeCount: blogDTO.DislikeCount,
 		CommentCount: blogDTO.CommentCount,
-
 	}
 }
-
-

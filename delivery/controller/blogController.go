@@ -4,6 +4,7 @@ import (
 	"blog-backend/domain"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -61,7 +62,8 @@ func (bc *BlogController) DeleteBlogByAuth(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Blog deleted successfully."})
 }
-//since the middleware does the autherization we don't have to check
+
+// since the middleware does the autherization we don't have to check
 func (bc *BlogController) DeleteBlogByAdmin(c *gin.Context) {
 	blogID := c.Param("id")
 	err := bc.BlogUseCase.DeleteBlog(c, blogID)
@@ -104,7 +106,7 @@ func (bc *BlogController) ListBlogs(c *gin.Context) {
 	l := c.Query("limit")
 	field := c.Query("field")
 	if field == "" {
-		field = "created_at" 
+		field = "created_at"
 	}
 	page, err := strconv.Atoi(p)
 	if err != nil || p == "" {
@@ -196,27 +198,27 @@ func (bc *BlogController) RemoveReaction(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Reaction removed successfully"})
 }
 
-func (bc * BlogController) CreateComment(c *gin.Context){
+func (bc *BlogController) CreateComment(c *gin.Context) {
 	blogID := c.Param("id")
 	userID, exists := c.Get("x-user-id")
-	if !exists{
+	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
 	}
-	if blogID == ""{
+	if blogID == "" {
 		c.JSON(400, gin.H{"error": "Invalid Request. Blog ID is required"})
 		return
 
 	}
-	type CommentDTO struct {
-    Comment string `json:"comment" binding:"required"`
-}
+	
 	var commentDTO CommentDTO
-	if err := c.ShouldBindJSON(&commentDTO); err != nil{
+	if err := c.ShouldBindJSON(&commentDTO); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid Request. Comment is required"})
 		return
 	}
-	_, err := bc.BlogUseCase.AddComment(c, blogID, userID.(string), commentDTO.Comment)
-	if err !=nil{
+	comment := CommentDtoToDomain(&commentDTO, blogID, userID.(string))
+	_, err := bc.BlogUseCase.AddComment(c, comment)
+	
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to add you comment"})
 		return
 	}
@@ -224,7 +226,7 @@ func (bc * BlogController) CreateComment(c *gin.Context){
 
 }
 
-func (bc *BlogController) ListAllComments(c *gin.Context){
+func (bc *BlogController) ListAllComments(c *gin.Context) {
 	blogID := c.Param("id")
 	if blogID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Blog ID is required"})
@@ -278,69 +280,26 @@ func (bc *BlogController) DislikeBlog(c *gin.Context) {
 
 	err := bc.BlogUseCase.AddReaction(c, blogID, userID.(string), string(domain.Dislike))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add reaction."})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add reaction. error: " + err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Reaction added successfully."})
 }
-// func (bc * BlogController) CreateComment(c *gin.Context){
-// 	blogID := c.Param("id")
-// 	userID, exists := c.Get("x-user-id")
-// 	if !exists{
-// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
-// 	}
-// 	if blogID == ""{
-// 		c.JSON(400, gin.H{"error": "Invalid Request. Blog ID is required"})
-// 		return
 
-// 	}
-// 	type CommentDTO struct {
-//     Comment string `json:"comment" binding:"required"`
-// }
-// 	var commentDTO CommentDTO
-// 	if err := c.ShouldBindJSON(&commentDTO); err != nil{
-// 		c.JSON(400, gin.H{"error": "Invalid Request. Comment is required"})
-// 		return
-// 	}
-// 	_, err := bc.BlogUseCase.AddComment(c, blogID, userID.(string), commentDTO.Comment)
-// 	if err !=nil{
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to add you comment"})
-// 		return
-// 	}
-// 	c.JSON(http.StatusCreated, gin.H{"message": "comment added successfully!"})
-// }
-
-// func (bc *BlogController) ListAllComments(c *gin.Context){
-// 	blogID := c.Param("id")
-// 	if blogID == "" {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Blog ID is required"})
-// 		return
-// 	}
-
-// 	comments, err := bc.BlogUseCase.GetComments(c, blogID)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch comments", "details": err.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, gin.H{"comments": comments})
-
-// }
-
-func (bc BlogController) DeleteCommentByAdmin(c *gin.Context){
+func (bc BlogController) DeleteCommentByAdmin(c *gin.Context) {
 	comId := c.Param("id")
 	err := bc.BlogUseCase.RemoveComment(c, comId)
-	if err != nil{
-		c.JSON(http.StatusInternalServerError,gin.H{"error":err})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
 	}
-c.JSON(http.StatusOK,gin.H{"Message":"comment deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"Message": "comment deleted successfully"})
 }
-func (bc BlogController) DeleteCommentByAuth(c *gin.Context){
-	userId,_ := c.Get("x-user-id")
+func (bc BlogController) DeleteCommentByAuth(c *gin.Context) {
+	userId, _ := c.Get("x-user-id")
 	comId := c.Param("id")
-	isAuth, err := bc.BlogUseCase.IsComAuthor(c,comId,userId.(string))
+	isAuth, err := bc.BlogUseCase.IsComAuthor(c, comId, userId.(string))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify author."})
 		return
@@ -356,6 +315,11 @@ func (bc BlogController) DeleteCommentByAuth(c *gin.Context){
 
 	c.JSON(http.StatusOK, gin.H{"message": "comment deleted successfully."})
 }
+
+type CommentDTO struct{
+		Content string `json:"content" binding:"required"`
+}
+
 type BlogDTO struct {
 	Title   string   `json:"title" binding:"required"`
 	Content string   `json:"content" binding:"required"`
@@ -364,16 +328,25 @@ type BlogDTO struct {
 
 func DtoToDomain(blogDTO *BlogDTO, authorID string) *domain.Blog {
 	return &domain.Blog{
-		Title:    blogDTO.Title,
-		Content:  blogDTO.Content,
-		AuthorID: authorID,
-		Tags:     blogDTO.Tags,	
+		Title:        blogDTO.Title,
+		Content:      blogDTO.Content,
+		AuthorID:     authorID,
+		Tags:         blogDTO.Tags,
 		ViewCount:    0,
 		LikeCount:    0,
 		DislikeCount: 0,
 		CommentCount: 0,
 	}
 }
+
+func CommentDtoToDomain(commentDTO *CommentDTO, blogID, authorID string) *domain.Comment {
+	return &domain.Comment{
+		BlogID:    blogID,
+		AuthorID:  authorID,
+		Content:   commentDTO.Content,
+		CreatedAt: time.Now(),}
+}
+
 type BlogUpdateDTO struct {
 	Title   *string   `json:"title,omitempty"`
 	Content *string   `json:"content,omitempty"`
