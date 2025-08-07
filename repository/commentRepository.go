@@ -77,20 +77,20 @@ func (cr *commentRepository) IsComAuthor(ctx context.Context, comId, userId stri
 
 	return count > 0, nil
 }
-type CommentResDTO struct {
-	BlogID    string `bson:"blogid" json:"blogid"`
-	AuthorID  string `bson:"authorid" json:"authorid"`
-	Content   string `bson:"content" 	json:"content"`
-	CreatedAt time.Time `bson:"created_at" json:"created_at"`
-}
-  func CommentDtoToDomain(dto *CommentResDTO) *domain.Comment {
-	return &domain.Comment{
-		BlogID:    dto.BlogID,
-		AuthorID:  dto.AuthorID,
-		Content:   dto.Content,
-		CreatedAt: dto.CreatedAt,
-	}
-}
+// type CommentResDTO struct {
+// 	BlogID    string `bson:"blogid" json:"blogid"`
+// 	AuthorID  string `bson:"authorid" json:"authorid"`
+// 	Content   string `bson:"content" 	json:"content"`
+// 	CreatedAt time.Time `bson:"created_at" json:"created_at"`
+// }
+//   func CommentDtoToDomain(dto *CommentResDTO) *domain.Comment {
+// 	return &domain.Comment{
+// 		BlogID:    dto.BlogID,
+// 		AuthorID:  dto.AuthorID,
+// 		Content:   dto.Content,
+// 		CreatedAt: dto.CreatedAt,
+// 	}
+// }
 
 type CommentResDTO struct {
 	BlogID    string `bson:"blogid" json:"blogid"`
