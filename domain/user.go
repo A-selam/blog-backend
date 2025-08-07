@@ -13,13 +13,21 @@ const (
 	Admin       Role = "Admin"
 )
 
+type Status string
+
+const (
+	Active   Status = "active"
+	Inactive Status = "inactive"
+)
+
 type User struct {
 	ID           string
 	GoogleID     string 
 	Username     string 
 	Email        string 
 	PasswordHash string 
-	Role         Role   
+	Role         Role
+	Status       Status   
 	CreatedAt    time.Time 
 	UpdatedAt    time.Time 
 

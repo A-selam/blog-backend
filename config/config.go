@@ -14,6 +14,8 @@ type Config struct {
 	GoogleClientSecret string
 	JWTSecret string
 	GeminiAPIKey string
+	Email string
+	AppPassword string
 }
 
 func LoadConfig() (*Config, error){
@@ -61,6 +63,18 @@ func LoadConfig() (*Config, error){
 		return nil, err
 	}
 
+	Email := os.Getenv("EMAIL")
+	if GeminiAPIKey == "" {
+		log.Fatal("EMAIL is not set")
+		return nil, err
+	}
+
+	AppPassword := os.Getenv("APP_PASSWORD")
+	if GeminiAPIKey == "" {
+		log.Fatal("APP_PASSWORD is not set")
+		return nil, err
+	}
+
 	return &Config{
 		MongoURI : MongoURI,
 		DBName : DBName,
@@ -68,5 +82,7 @@ func LoadConfig() (*Config, error){
 		GoogleClientSecret : GoogleClientSecret,
 		JWTSecret : JWTSecret,
 		GeminiAPIKey : GeminiAPIKey,
+		Email: Email,
+		AppPassword: AppPassword,
 	}, nil
 }

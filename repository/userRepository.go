@@ -9,7 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-
 )
 
 type userRepository struct {
@@ -82,8 +81,16 @@ func (ur userRepository) GetUserByEmail(ctx context.Context, email string) (*dom
 }
 
 func (ur userRepository) GetUserByUsername(ctx context.Context, username string) (*domain.User, error) {
-	// TODO: Implement the function
-	return nil, nil
+	collection := ur.database.Collection(ur.collection)
+	filter := bson.D{{Key: "username", Value: username}}
+
+	var user *UserDTO
+	err := collection.FindOne(ctx, filter).Decode(&user)
+	if err != nil {
+		return nil, err
+	}
+
+	return DTOToDomain(user), nil
 }
 
 func (ur userRepository) GetUserByUsernameAndEmail(ctx context.Context, username, email string) (*domain.User, error) {
@@ -238,6 +245,7 @@ type UserDTO struct {
 	Email          string        `bson:"email"`    // unique
 	PasswordHash   string        `bson:"password_hash"`
 	Role           string        `bson:"role"`
+	Status         string        `bson:"status"`
 	CreatedAt      time.Time     `bson:"created_at"`
 	UpdatedAt      time.Time     `bson:"updated_at"`
 	Bio            string        `bson:"bio,omitempty"`
@@ -255,6 +263,7 @@ func DTOToDomain(d *UserDTO) *domain.User {
 		Email:          d.Email,
 		PasswordHash:   d.PasswordHash,
 		Role:           domain.Role(d.Role),
+		Status:         domain.Status(d.Status),
 		CreatedAt:      d.CreatedAt,
 		UpdatedAt:      d.UpdatedAt,
 		Bio:            d.Bio,
@@ -270,6 +279,7 @@ func DomainToDTO(u domain.User) *UserDTO {
 		Email:          u.Email,
 		PasswordHash:   u.PasswordHash,
 		Role:           string(u.Role),
+		Status:         string(u.Status),
 		CreatedAt:      u.CreatedAt,
 		UpdatedAt:      u.UpdatedAt,
 		Bio:            u.Bio,

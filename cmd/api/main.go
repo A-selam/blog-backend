@@ -30,6 +30,7 @@ func main() {
     jwtService := infrastructure.NewJWTService(envConfig.JWTSecret)
     passwordService := infrastructure.NewPasswordService()
 	geminiService := infrastructure.NewGeminiService(envConfig.GeminiAPIKey)
+	emailServices := infrastructure.NewEmailServices(envConfig.Email, envConfig.AppPassword)
 
 	gu := usecase.NewGeminiUsecase(geminiService)
 	gc := controller.NewGeminiController(gu)
@@ -44,7 +45,8 @@ func main() {
 	bc := controller.NewBlogController(bu)
 	resetTR := repository.NewResetTokenRepository(db)
 	refreshTR := repository.NewRefreshTokenRepositoryFromDB(db)
-	au := usecase.NewAuthUsecase(ur, refreshTR, resetTR, jwtService, passwordService, timeOut)
+	atr := repository.NewActivationTokenRepository(db)
+	au := usecase.NewAuthUsecase(ur, refreshTR, resetTR, jwtService, passwordService, emailServices, atr, timeOut)
 	ac := controller.NewAuthController(au, googleConfig)
 
     // Set up Gin router

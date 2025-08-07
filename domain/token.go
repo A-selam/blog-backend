@@ -29,6 +29,13 @@ type PasswordResetToken struct {
 	CreatedAt time.Time
 }
 
+type ActivateUserToken struct {
+	ID     		string
+	UserID 		string
+	CreatedAT 	string
+	ExpiresAt 	string
+}
+
 type IRefreshTokenRepository interface {
 	// Refresh Tokens
 	CreateRefreshToken(ctx context.Context, userID, refToken string) (*RefreshToken, error)
@@ -43,6 +50,10 @@ type IResetTokenRepository interface {
 	CreatePasswordResetToken(ctx context.Context, token *PasswordResetToken) (*PasswordResetToken, error)
 	GetPasswordResetToken(ctx context.Context, token string) (*PasswordResetToken, error)
 	MarkPasswordResetTokenUsed(ctx context.Context, token string) error
+}
+
+type IActivationTokenRepository interface {
+	CreateActivationToken(ctx context.Context, userID string) (string, error) 
 }
 
 var (
