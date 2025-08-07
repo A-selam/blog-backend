@@ -122,9 +122,17 @@ func (au *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (*
 		return nil, nil, fmt.Errorf("failed to get refresh token: %v", err)
 	}
 	
-	if refreshTokenData == nil || refreshTokenData.ExpiresAt.Before(time.Now()) {
-		return nil, nil, fmt.Errorf("invalid or expired refresh token")	
-	}
+	if refreshTokenData == nil {
+	return nil, nil, errors.New("refresh token not found")
+}
+
+	if refreshTokenData.ExpiresAt.Before(time.Now()) {
+		if err := au.Logout(ctx, refreshTokenData.Token); err != nil {
+			log.Printf("Failed to delete expired refresh token: %v", err)
+		}
+	return nil, nil, errors.New("refresh token has expired")
+}
+
 	
 	user, err := au.userRepository.GetUserByID(ctx, refreshTokenData.UserID)
 	if err != nil {
