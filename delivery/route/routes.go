@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Setup(ac *controller.AuthController, bc *controller.BlogController, uc *controller.UserController, jwtService domain.IJWTService, engine *gin.Engine) {
+func Setup(ac *controller.AuthController, bc *controller.BlogController, uc *controller.UserController, gc *controller.GeminiController,jwtService domain.IJWTService, engine *gin.Engine) {
 	// ============ Public Routes ============
 	publicRouter := engine.Group("/api")
 	NewAuthRouter(ac, publicRouter)
@@ -18,7 +18,7 @@ func Setup(ac *controller.AuthController, bc *controller.BlogController, uc *con
 	userRouter := engine.Group("/api")
 	userRouter.Use(middleware.NewAuthMiddleware(jwtService))
 	NewUserRouter(uc, userRouter)
-	NewBlogAuthRouter(bc, userRouter) // Authenticated blog routes (create/update/delete)
+	NewBlogAuthRouter(bc, gc, userRouter) // Authenticated blog routes (create/update/delete)
 
 	// ============ Admin Routes ============
 	adminRouter := engine.Group("/api/admin")
@@ -53,7 +53,7 @@ func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup) {
 	group.GET("/blogs/:id/comments", handler.ListAllComments)
 }
 
-func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGroup) {
+func NewBlogAuthRouter(handler *controller.BlogController, handler2 *controller.GeminiController, group *gin.RouterGroup) {
 	group.POST("/blogs", handler.CreateBlog)
 	group.PATCH("/blogs/:id", handler.UpdateBlog)
 	group.DELETE("/blogs/:id", handler.DeleteBlogByAuth)
@@ -62,6 +62,10 @@ func NewBlogAuthRouter(handler *controller.BlogController, group *gin.RouterGrou
 	group.DELETE("/blogs/:id/reaction",handler.RemoveReaction)
 	group.POST("/blogs/:id/comments",handler.CreateComment)
 	group.DELETE("/blogs/:id/comments", handler.DeleteCommentByAuth)
+
+	group.POST("/blogs/ai/generate-content", handler2.GenerateContent)
+	group.POST("/blogs/ai/refine-content", handler2.RefineContent)
+	group.POST("/blogs/ai/generate-skeleton", handler2.GenerateSkeleton)
 }
 
 func NewAdminRouter(userHandler *controller.UserController, blogHandler *controller.BlogController, group *gin.RouterGroup) {

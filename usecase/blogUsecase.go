@@ -16,6 +16,7 @@ type blogUsecase struct {
 	blogRepository         domain.IBlogRepository
 	blogReactionRepository domain.IReactionRepository
 	blogCommentRepository  domain.ICommentRepository
+	geminiServices         domain.IGeminiService
 	contextTimeout         time.Duration
 }
 
@@ -25,12 +26,14 @@ func NewBlogUsecase(
 	blogRepository domain.IBlogRepository,
 	blogReactionRepository domain.IReactionRepository,
 	blogCommentRepository domain.ICommentRepository,
+	geminiServices domain.IGeminiService,
 	timeout time.Duration,
 ) domain.IBlogUseCase {
 	return &blogUsecase{
 		blogRepository:         blogRepository,
 		blogReactionRepository: blogReactionRepository,
 		blogCommentRepository:  blogCommentRepository,
+		geminiServices:         geminiServices,
 		contextTimeout:         timeout,
 	}
 }
@@ -39,14 +42,25 @@ func (bu *blogUsecase) CreateBlog(ctx context.Context, blog *domain.Blog) (*doma
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
 
+	if len(blog.Tags) == 0 {
+		fullPrompt := fmt.Sprintf(`Analyze the following blog post content and generate 5 relevant tags in a comma-separated list: "%s"`, blog.Content)
+
+		response, err := bu.geminiServices.GenerateTags(fullPrompt)
+		if err != nil {
+			return nil, err
+		}
+
+		blog.Tags = response
+	}
+
 	createdBlog, err := bu.blogRepository.CreateBlog(ctx, blog)
 	if err != nil {
-		// fmt.Println(err)
 		return nil, err
 	}
 
 	return createdBlog, nil
 }
+
 func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
