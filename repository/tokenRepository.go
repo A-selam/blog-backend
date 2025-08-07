@@ -3,6 +3,7 @@ package repository
 import (
 	"blog-backend/domain"
 	"context"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -219,6 +220,41 @@ func (tr *activationTokenRepository) CreateActivationToken(ctx context.Context, 
 	activationToken.ID = insertResult.InsertedID.(bson.ObjectID)
 	
 	return activationToken.ID.Hex(), nil
+}
+
+func (tr *activationTokenRepository) GetTokenUser(ctx context.Context, tokenID string) (string, error) {
+	collection := tr.database.Collection(tr.collection)
+	oid, err := bson.ObjectIDFromHex(tokenID)
+	if err != nil {
+		return "", err
+	}
+
+	filter := bson.D{{Key:"_id", Value: oid}}
+
+	var tokenDTO activationTokenDTO
+
+	err = collection.FindOne(ctx, filter).Decode(&tokenDTO)
+	if err != nil {
+		return "", err
+	}
+
+	return tokenDTO.UserID.Hex(), nil
+}
+
+func (tr *activationTokenRepository) DeleteActivationToken(ctx context.Context, tokenID string) error {
+	collection := tr.database.Collection(tr.collection)
+	oid, err := bson.ObjectIDFromHex(tokenID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{{Key:"_id", Value: oid}}
+	deletedResult, err := collection.DeleteOne(ctx, filter)
+	if deletedResult.DeletedCount == 0 {
+		return fmt.Errorf("token not found")
+	}
+
+	return nil
 }
 
 type activationTokenDTO struct {

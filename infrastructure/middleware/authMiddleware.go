@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"blog-backend/domain"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -44,6 +45,19 @@ func NewAdminMiddleware() gin.HandlerFunc{
 		role, exists := c.Get("x-user-role")
 		if !exists || role != string(domain.Admin) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: Admins only"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+func NewStatusCheckMiddleware() gin.HandlerFunc{
+	return func(c *gin.Context){
+		status, err := c.Cookie("status")
+		if err != nil || status != string(domain.Active){
+			fmt.Println(status)
+			c.JSON(http.StatusForbidden, gin.H{"error":"Account must be activated"})
 			c.Abort()
 			return
 		}

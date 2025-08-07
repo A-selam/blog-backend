@@ -53,7 +53,9 @@ type IResetTokenRepository interface {
 }
 
 type IActivationTokenRepository interface {
-	CreateActivationToken(ctx context.Context, userID string) (string, error) 
+	CreateActivationToken(ctx context.Context, userID string) (string, error)
+	GetTokenUser(ctx context.Context, tokenID string) (string, error)
+	DeleteActivationToken(ctx context.Context, tokenID string) error
 }
 
 var (

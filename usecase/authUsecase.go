@@ -92,6 +92,26 @@ func (au *authUsecase) Register(ctx context.Context, user *domain.User) (*domain
 	return createdUser, nil
 }
 
+func (au *authUsecase) Activate(ctx context.Context, tokenID string) error {
+	userID, err := au.activationTokenRepository.GetTokenUser(ctx, tokenID)
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
+
+	err = au.userRepository.ActivateUser(ctx, userID)
+	if err != nil {
+		return err 
+	}
+
+	err = au.activationTokenRepository.DeleteActivationToken(ctx,tokenID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (au *authUsecase) Login(ctx context.Context, email, password string) (*domain.User, *domain.TokenPair, error) {
 	ctx, cancel := context.WithTimeout(ctx, au.contextTimeout)
 	defer cancel()
@@ -214,7 +234,7 @@ func (au *authUsecase) FindOrCreateGoogleUser(ctx context.Context, email, userna
 func (au *authUsecase) IssueTokenPair(ctx context.Context, user *domain.User) (*domain.TokenPair, error) {
 	jwtToken, err := au.jwtServices.GenerateToken(user.ID, user.Username, user.Email, string(user.Role))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to generate JWT token: %v", err)
+		return nil, fmt.Errorf("failed to generate JWT token: %v", err)
 	}
 
 	refToken, err := generateToken()

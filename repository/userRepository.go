@@ -36,6 +36,25 @@ func (ur userRepository) CreateUser(ctx context.Context, user *domain.User) (*do
 	return DTOToDomain(userDTO), nil
 }
 
+func (ur userRepository) ActivateUser(ctx context.Context, userID string) error {
+	collection := ur.database.Collection(ur.collection)
+
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return err
+	}
+	updates := bson.D{{Key:"status", Value: string(domain.Active)}}
+	filter := bson.D{{Key:"_id", Value: oid}}
+	update := bson.D{{Key: "$set", Value: updates}}
+
+	updateResult, err := collection.UpdateOne(ctx, filter, update)
+	if updateResult.MatchedCount == 0 {
+		return fmt.Errorf("activation failed")
+	}
+
+	return nil 
+}
+
 func (ur userRepository) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
 	collection := ur.database.Collection(ur.collection)
 

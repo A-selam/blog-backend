@@ -66,9 +66,45 @@ func (ac *AuthController) Register(c *gin.Context) {
 		return
 	}
 
+	c.SetCookie(
+		"status",
+		string(domain.Inactive),
+		int(time.Until(time.Now().Add(7 * 24 * time.Hour)).Seconds()),
+		"/",
+		"",
+		true,
+		true,
+	)
+
 	registeredUserResponse := signUpDetailResponseFromDomain(registerdUser)
 
 	c.JSON(http.StatusCreated, gin.H{"User": registeredUserResponse})
+}
+
+func (ac *AuthController) Activate(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error":"Missing token"})
+		return 
+	}
+
+	err := ac.AuthUseCase.Activate(c, token)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to activate account."})
+		return 
+	}
+
+	c.SetCookie(
+		"status",
+		string(domain.Active),
+		int(time.Until(time.Now().Add(7 * 24 * time.Hour)).Seconds()),
+		"/",
+		"",
+		true,
+		true,
+	)
+
+	c.JSON(http.StatusOK, gin.H{"message":"Account activated."})
 }
 
 func (ac *AuthController) Login(c *gin.Context) {
@@ -98,9 +134,16 @@ func (ac *AuthController) Login(c *gin.Context) {
 		true,
 		true,
 	)
-	cook, err := c.Cookie("refresh_token")
-	fmt.Println("Refresh Token:", cook, err)
-	fmt.Println("Refresh Token2:", tokenPair.RefreshToken)
+
+	c.SetCookie(
+		"status",
+		string(user.Status),
+		int(time.Until(tokenPair.ExpiresIn).Seconds()),
+		"/",
+		"",
+		true,
+		true,
+	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"User":      loginResponseFromDomain(user),

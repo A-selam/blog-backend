@@ -2,8 +2,9 @@ package infrastructure
 
 import (
 	"blog-backend/domain"
-	"time"
 	"fmt"
+	"time"
+
 	"github.com/golang-jwt/jwt"
 )
 
@@ -28,7 +29,7 @@ func (j *jWTService) GenerateToken(userID,username, email, role string) (string,
 }
 
 
-func (s *jWTService) ParseToken(tokenString string) (string, string, error) {
+func (s *jWTService) ParseToken(tokenString string) (string, string,error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -49,6 +50,7 @@ func (s *jWTService) ParseToken(tokenString string) (string, string, error) {
 		if !ok {
 			return "", "", fmt.Errorf("invalid role in token")
 		}
+		
 		return userID, role, nil
 	}
 
