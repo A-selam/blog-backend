@@ -223,6 +223,7 @@ type loginResponse struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Role     string `json:"role"`
+	Status   string `json:"status"`
 }
 
 type signUpDetailResponse struct {
@@ -230,6 +231,7 @@ type signUpDetailResponse struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Role     string `json:"role"`
+	Status   string `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
@@ -244,6 +246,7 @@ func loginResponseFromDomain(u *domain.User) loginResponse {
 		Username: u.Username,
 		Email:    u.Email,
 		Role:     string(u.Role),
+		Status:   string(u.Status),
 	}
 }
 
@@ -253,6 +256,7 @@ func signUpDetailResponseFromDomain(u *domain.User) signUpDetailResponse {
 		Username: u.Username,
 		Email:    u.Email,
 		Role:     string(u.Role),
+		Status:   string(u.Status),
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,
 
@@ -271,6 +275,7 @@ func signUpToDomain(s signUpDTO) *domain.User {
 		Email: s.Email,
 		PasswordHash: s.Password,
 		Role: domain.RegularUser,
+		Status: domain.Inactive,
 		CreatedAt: now,
 		UpdatedAt: now,
 

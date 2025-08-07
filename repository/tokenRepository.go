@@ -190,3 +190,52 @@ func refreshToken(userID, token string) (*refreshTokenDTO, error) {
 		CreatedAt: time.Now(),
 	}, nil
 }
+
+type activationTokenRepository struct {
+	database *mongo.Database
+	collection string
+}
+
+func NewActivationTokenRepository(db *mongo.Database) domain.IActivationTokenRepository {
+	return &activationTokenRepository{
+		database: db,
+		collection: "activationTokens",
+	}
+}
+
+func (tr *activationTokenRepository) CreateActivationToken(ctx context.Context, userID string) (string, error) {
+	collection := tr.database.Collection(tr.collection)
+
+	activationToken, err := activationToken(userID)
+	if err != nil {
+		return "", err	
+	}
+
+	insertResult, err := collection.InsertOne(ctx, activationToken)
+	if err != nil {	
+		return "", err
+	}
+
+	activationToken.ID = insertResult.InsertedID.(bson.ObjectID)
+	
+	return activationToken.ID.Hex(), nil
+}
+
+type activationTokenDTO struct {
+	ID        bson.ObjectID `bson:"_id,omitempty"`
+	UserID    bson.ObjectID `bson:"user_id"`
+	ExpiresAt time.Time     `bson:"expires_at"`
+	CreatedAt time.Time     `bson:"created_at"`
+}
+
+func activationToken(userID string) (*activationTokenDTO, error) {
+	oid, err := bson.ObjectIDFromHex(userID)
+	if err != nil {
+		return nil, err
+	}
+	return &activationTokenDTO{
+		UserID:    oid,
+		ExpiresAt: time.Now().Add(24 * time.Hour), 
+		CreatedAt: time.Now(),
+	}, nil
+}
