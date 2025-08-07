@@ -244,10 +244,10 @@ func (au *authUsecase) IssueTokenPair(ctx context.Context, user *domain.User) (*
 	return tokenPair, nil
 }
 
-func (au *authUsecase) ForgotPassword(ctx context.Context, email string) (token string, err error) {
+func (au *authUsecase) ForgotPassword(ctx context.Context, email string) ( err error) {
 	res, err := au.userRepository.GetUserByEmail(ctx, email)
 	if err != nil{
-		return "", domain.ErrInvalidUser
+		return  domain.ErrInvalidUser
 	}
 
 	resetToken := &domain.PasswordResetToken{
@@ -261,10 +261,14 @@ func (au *authUsecase) ForgotPassword(ctx context.Context, email string) (token 
 
 	createdToken, err := au.resetTokenRepository.CreatePasswordResetToken(ctx,resetToken)
 	if err != nil{
-		return "", err
+		return  err
+	}
+	err = au.emailServices.SendPasswordResetEmail(email, createdToken.Token)
+	if err != nil {	
+		return fmt.Errorf("failed to send password reset email: %v", err)
 	}
 
-	return createdToken.Token, nil
+	return nil
 }
 
 

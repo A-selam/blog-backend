@@ -7,7 +7,7 @@ type IAuthUseCase interface {
 	Login(ctx context.Context, email, password string) (*User, *TokenPair, error)
 	Logout(ctx context.Context, refreshToken string) error
 	RefreshToken(ctx context.Context, refreshToken string) (*User, *TokenPair, error)
-	ForgotPassword(ctx context.Context, email string) (string, error)
+	ForgotPassword(ctx context.Context, email string)  error
 	ResetPassword(ctx context.Context, token, newPassword string) error
 	FindOrCreateGoogleUser(ctx context.Context, email, username, profilePicture, googleID string) (*User, error)
 	IssueTokenPair(ctx context.Context, user *User) (*TokenPair, error)
