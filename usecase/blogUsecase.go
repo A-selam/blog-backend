@@ -16,6 +16,7 @@ type blogUsecase struct {
 	blogRepository         domain.IBlogRepository
 	blogReactionRepository domain.IReactionRepository
 	blogCommentRepository  domain.ICommentRepository
+	historyRepository	domain.IHistoryRepository
 	geminiServices         domain.IGeminiService
 	contextTimeout         time.Duration
 }
@@ -26,6 +27,7 @@ func NewBlogUsecase(
 	blogRepository domain.IBlogRepository,
 	blogReactionRepository domain.IReactionRepository,
 	blogCommentRepository domain.ICommentRepository,
+	historyRepository	domain.IHistoryRepository,
 	geminiServices domain.IGeminiService,
 	timeout time.Duration,
 ) domain.IBlogUseCase {
@@ -33,6 +35,7 @@ func NewBlogUsecase(
 		blogRepository:         blogRepository,
 		blogReactionRepository: blogReactionRepository,
 		blogCommentRepository:  blogCommentRepository,
+		historyRepository: 		historyRepository,	
 		geminiServices:         geminiServices,
 		contextTimeout:         timeout,
 	}
@@ -61,6 +64,32 @@ func (bu *blogUsecase) CreateBlog(ctx context.Context, blog *domain.Blog) (*doma
 	return createdBlog, nil
 }
 
+func (bu *blogUsecase) 	AddReadHistory(ctx context.Context, userID, blogID string) error{
+	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
+	defer cancel()
+	blog, err := bu.blogRepository.GetBlogByID(ctx, blogID)
+	if err != nil{
+		return err
+	}
+
+	err = bu.historyRepository.AddReadHistory(ctx, userID, blogID, blog.Tags)
+	if err != nil{
+		return err
+	}
+	return nil
+}
+
+func (bu *blogUsecase) 	GetRecommendations(ctx context.Context, userID string) ([]*domain.Blog, error){
+	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
+	defer cancel()
+	blogs, err := bu.historyRepository.GetRecommendations(ctx, userID)
+	if err != nil{
+		return nil, err
+	}
+	return blogs, nil
+	
+}
+
 func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
@@ -72,26 +101,27 @@ func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog
 	errChan := make(chan error, 1)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go func ()  {
+	go func() {
 		defer wg.Done()
 		goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer goroutineCancel()
-	err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, "view_count", 1)
-	if err != nil {		errChan <- err
-		log.Printf("Error updating view count for blog %s: %v", blogID, err)
-		return
+		err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, "view_count", 1)
+		if err != nil {
+			errChan <- err
+			log.Printf("Error updating view count for blog %s: %v", blogID, err)
+			return
 
-	}
+		}
 	}()
 	go func() {
-	wg.Wait()
-	close(errChan)
+		wg.Wait()
+		close(errChan)
 	}()
 	for err := range errChan {
-		if err != nil {	
+		if err != nil {
 			return nil, err
 		}
-	
+
 	}
 	return blog, nil
 }
@@ -246,28 +276,28 @@ func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string
 	errChan := make(chan error, 1)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go func(){
+	go func() {
 		defer wg.Done()
 		goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer goroutineCancel()
-	if string(rxn.Type) == string(domain.Like) {
-		err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, string(domain.LikeCountField), -1)
-		if err != nil {
-			errChan <- err
+		if string(rxn.Type) == string(domain.Like) {
+			err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, string(domain.LikeCountField), -1)
+			if err != nil {
+				errChan <- err
+			}
+		} else if rxn.Type == domain.Dislike {
+			err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, string(domain.DislikeCountField), -1)
+			if err != nil {
+				errChan <- err
+			}
+		} else {
+			errChan <- errors.New("reaction type not recognized")
 		}
-	} else if rxn.Type == domain.Dislike {
-		err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, string(domain.DislikeCountField), -1)
-		if err != nil {
-			errChan <- err
-		}
-	}else {
-		 errChan <- errors.New("reaction type not recognized")
-	}
 
 	}()
 	go func() {
-	wg.Wait()
-	close(errChan)
+		wg.Wait()
+		close(errChan)
 
 	}()
 	for err := range errChan {
@@ -279,11 +309,13 @@ func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string
 	return nil
 }
 
+
+
 // Comments
 func (bu *blogUsecase) AddComment(ctx context.Context, comment *domain.Comment) (*domain.Comment, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
-	
+
 	res, err := bu.blogCommentRepository.AddComment(ctx, comment)
 	if err != nil {
 		return nil, err
@@ -295,16 +327,16 @@ func (bu *blogUsecase) AddComment(ctx context.Context, comment *domain.Comment) 
 		defer wg.Done()
 		goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer goroutineCancel()
-	err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, comment.BlogID, "comment_count", 1)
-	if err != nil {
-		log.Printf("Error updating comment count for blog %s: %v", comment.BlogID, err)
-		errcChan <- fmt.Errorf("failed to update comment count: %v", err)
-		return
-	}
-}()
+		err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, comment.BlogID, "comment_count", 1)
+		if err != nil {
+			log.Printf("Error updating comment count for blog %s: %v", comment.BlogID, err)
+			errcChan <- fmt.Errorf("failed to update comment count: %v", err)
+			return
+		}
+	}()
 	go func() {
-	wg.Wait()
-	close(errcChan)
+		wg.Wait()
+		close(errcChan)
 	}()
 	for err := range errcChan {
 		if err != nil {
@@ -348,8 +380,8 @@ func (bu *blogUsecase) IsBlogAuthor(ctx context.Context, blogID, userID string) 
 	return isAuthor, nil
 }
 
-func (bu *blogUsecase) RemoveComment(ctx context.Context,commentID string)(error){
-	ctx, cancel := context.WithTimeout(ctx,bu.contextTimeout)
+func (bu *blogUsecase) RemoveComment(ctx context.Context, commentID string) error {
+	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
-	return bu.blogCommentRepository.DeleteComment(ctx,commentID)
+	return bu.blogCommentRepository.DeleteComment(ctx, commentID)
 }

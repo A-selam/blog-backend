@@ -2,6 +2,7 @@ package controller
 
 import (
 	"blog-backend/domain"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -130,6 +131,17 @@ func (bc *BlogController) GetBlog(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(400, gin.H{"error": "Blog ID is required."})
+	}
+	userID, exists := c.Get("x-user-id")
+	log.Println(userID)
+	if exists{
+		err := bc.BlogUseCase.AddReadHistory(c, userID.(string), id)
+		log.Println("sent to usecase")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to add read history."})
+			return
+		}
+
 	}
 	blog, err := bc.BlogUseCase.GetBlog(c, id)
 	if err != nil {
@@ -314,6 +326,22 @@ func (bc BlogController) DeleteCommentByAuth(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "comment deleted successfully."})
+}
+
+
+func (bc *BlogController) GetRecommendations(c *gin.Context){
+	userID, exists := c.Get("x-user-id")
+	if !exists{
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "you are not authorized to get recommendations"})
+		return 
+	}
+	blogs, err := bc.BlogUseCase.GetRecommendations(c, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get recommendations."})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, gin.H{"Blogs Recommended": blogs})
+	
 }
 
 type CommentDTO struct{
