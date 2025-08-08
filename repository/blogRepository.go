@@ -288,10 +288,6 @@ func (h *historyRepository) AddReadHistory(ctx context.Context, userID, blogID s
 }
 
 
-func (h *historyRepository) GetReadHistory(ctx context.Context, userID string) ([]string, error) {
-	panic("unimplemented")
-}
-
 func (h *historyRepository) GetRecommendations(ctx context.Context, userID string) ([]*domain.Blog, error) {
     collection := h.database.Collection(h.collection)
     blogRepo := NewBlogRepositoryFromDB(h.database) // same DB assumed

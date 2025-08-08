@@ -66,7 +66,6 @@ type ReadHistory struct {
 type IHistoryRepository interface {
 	AddReadHistory(ctx context.Context, userID, blogID string, blogTags []string) error
 	GetRecommendations(ctx context.Context, userID string) ([]*Blog, error)
-	GetReadHistory(ctx context.Context, userID string) ([]string, error)
 }
 
 
