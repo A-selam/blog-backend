@@ -133,33 +133,6 @@ func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog
 		return nil, err
 	}
 
-<<<<<<< HEAD
-	errChan := make(chan error, 1)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		goroutineCtx, goroutineCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer goroutineCancel()
-		err = bu.blogRepository.UpdateBlogMetrics(goroutineCtx, blogID, "view_count", 1)
-		if err != nil {
-			errChan <- err
-			log.Printf("Error updating view count for blog %s: %v", blogID, err)
-			return
-
-		}
-	}()
-	go func() {
-		wg.Wait()
-		close(errChan)
-	}()
-	for err := range errChan {
-		if err != nil {
-			return nil, err
-		}
-
-	}
-=======
 	blogJSON, err := json.Marshal(blog)
 	if err == nil {
 		bu.cacheUseCase.Set(ctx, cacheKey, blogJSON, blogDetailCacheTTL)
@@ -177,7 +150,6 @@ func (bu *blogUsecase) GetBlog(ctx context.Context, blogID string) (*domain.Blog
 		}
 	}()
 
->>>>>>> df237cc94124ef968f73a256a16d06c209299f32
 	return blog, nil
 }
 
@@ -442,12 +414,6 @@ func (bu *blogUsecase) RemoveReaction(ctx context.Context, blogID, userID string
 	return nil
 }
 
-<<<<<<< HEAD
-
-
-// Comments
-=======
->>>>>>> df237cc94124ef968f73a256a16d06c209299f32
 func (bu *blogUsecase) AddComment(ctx context.Context, comment *domain.Comment) (*domain.Comment, error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
@@ -566,13 +532,6 @@ func (bu *blogUsecase) IsBlogAuthor(ctx context.Context, blogID, userID string) 
 	return isAuthor, nil
 }
 
-<<<<<<< HEAD
-func (bu *blogUsecase) RemoveComment(ctx context.Context, commentID string) error {
-	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
-	defer cancel()
-	return bu.blogCommentRepository.DeleteComment(ctx, commentID)
-}
-=======
 func (bu *blogUsecase) RemoveComment(ctx context.Context, commentID string) (error) {
 	ctx, cancel := context.WithTimeout(ctx, bu.contextTimeout)
 	defer cancel()
@@ -586,4 +545,3 @@ func (bu *blogUsecase) RemoveComment(ctx context.Context, commentID string) (err
 
 	return nil
 }
->>>>>>> df237cc94124ef968f73a256a16d06c209299f32

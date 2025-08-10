@@ -60,12 +60,8 @@ func main() {
 	bcr := repository.NewCommentRepositoryFromDB(db)
 	brr := repository.NewReactionRepositoryFromDB(db)
 	br := repository.NewBlogRepositoryFromDB(db)
-<<<<<<< HEAD
 	hr := repository.NewHistoryRepositoryFromDB(db)
-	bu := usecase.NewBlogUsecase(br, brr, bcr,hr, geminiService,timeOut)
-=======
-	bu := usecase.NewBlogUsecase(br, brr, bcr, geminiService, timeOut, cacheUseCase) 
->>>>>>> df237cc94124ef968f73a256a16d06c209299f32
+	bu := usecase.NewBlogUsecase(br, brr, bcr,hr, geminiService,timeOut, cacheUseCase)
 	bc := controller.NewBlogController(bu)
 	resetTR := repository.NewResetTokenRepository(db)
 	refreshTR := repository.NewRefreshTokenRepositoryFromDB(db)
