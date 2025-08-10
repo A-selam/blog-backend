@@ -15,7 +15,7 @@ import (
 )
 
 type authUsecase struct {
-	userRepository        domain.IUserRepository
+	userRepository         domain.IUserRepository
 	refreshTokenRepository domain.IRefreshTokenRepository
 	resetTokenRepository domain.IResetTokenRepository
 	jwtServices      domain.IJWTService
@@ -26,10 +26,10 @@ type authUsecase struct {
 }
 
 func NewAuthUsecase(
-	userRepository        domain.IUserRepository,
+	userRepository domain.IUserRepository,
 	refreshTokenRepository domain.IRefreshTokenRepository,
 	resetTokenRepository domain.IResetTokenRepository,
-	jwtServices      domain.IJWTService,
+	jwtServices domain.IJWTService,
 	passwordServices domain.IPasswordService,
 	emailServices domain.IEmailServices,
 	activationTokenRepository domain.IActivationTokenRepository,
@@ -64,7 +64,7 @@ func (au *authUsecase) Register(ctx context.Context, user *domain.User) (*domain
 		return nil, fmt.Errorf("username is already taken")
 	}
 	if err != mongo.ErrNoDocuments {
-		return nil, err 
+		return nil, err
 	}
 
 	hashedPassword, err := au.passwordServices.HashPassword(user.PasswordHash)
@@ -97,7 +97,7 @@ func (au *authUsecase) Login(ctx context.Context, email, password string) (*doma
 	defer cancel()
 
 	user, err := au.userRepository.GetUserByEmail(ctx, email)
-	if err == mongo.ErrNoDocuments || au.passwordServices.ComparePassword(user.PasswordHash, password) != nil{
+	if err == mongo.ErrNoDocuments || au.passwordServices.ComparePassword(user.PasswordHash, password) != nil {
 		fmt.Println(user)
 		return nil, nil, fmt.Errorf("Invalid email or password")
 	}
@@ -116,17 +116,17 @@ func (au *authUsecase) Login(ctx context.Context, email, password string) (*doma
 		return nil, nil, fmt.Errorf("Failed to generate refresh token: %v", err)
 	}
 
-	refreshToken, err := au.refreshTokenRepository.CreateRefreshToken(ctx, user.ID, refToken,)
+	refreshToken, err := au.refreshTokenRepository.CreateRefreshToken(ctx, user.ID, refToken)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to create refresh token: %v", err)
 	}
 
 	tokenPair := &domain.TokenPair{
-		AccessToken: jwtToken,
+		AccessToken:  jwtToken,
 		RefreshToken: refreshToken.Token,
-		ExpiresIn: refreshToken.ExpiresAt,
+		ExpiresIn:    refreshToken.ExpiresAt,
 	}
-	
+
 	return user, tokenPair, nil
 }
 
@@ -146,23 +146,22 @@ func (au *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (*
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get refresh token: %v", err)
 	}
-	
+
 	if refreshTokenData == nil {
-	return nil, nil, errors.New("refresh token not found")
-}
+		return nil, nil, errors.New("refresh token not found")
+	}
 
 	if refreshTokenData.ExpiresAt.Before(time.Now()) {
 		if err := au.Logout(ctx, refreshTokenData.Token); err != nil {
 			log.Printf("Failed to delete expired refresh token: %v", err)
 		}
-	return nil, nil, errors.New("refresh token has expired")
-}
+		return nil, nil, errors.New("refresh token has expired")
+	}
 
-	
 	user, err := au.userRepository.GetUserByID(ctx, refreshTokenData.UserID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get user: %v", err)
-	}	
+	}
 
 	jwtToken, err := au.jwtServices.GenerateToken(user.ID, user.Username, user.Email, string(user.Role))
 	if err != nil {
@@ -177,11 +176,11 @@ func (au *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (*
 	refToken, err := au.refreshTokenRepository.ReplaceRefreshToken(ctx, user.ID, newRefreshToken)
 
 	tokenPair := &domain.TokenPair{
-		AccessToken: jwtToken,
+		AccessToken:  jwtToken,
 		RefreshToken: refToken.Token,
-		ExpiresIn: refToken.ExpiresAt,
+		ExpiresIn:    refToken.ExpiresAt,
 	}
-	
+
 	return user, tokenPair, nil
 }
 
@@ -202,13 +201,13 @@ func (au *authUsecase) FindOrCreateGoogleUser(ctx context.Context, email, userna
 
 	if !found {
 		user = &domain.User{
-			GoogleID: googleID,
-			Email: email,
-			Username: username,
+			GoogleID:       googleID,
+			Email:          email,
+			Username:       username,
 			ProfilePicture: profilePicture,
-			Role: domain.RegularUser,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+			Role:           domain.RegularUser,
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
 		}
 
 		user, err = au.userRepository.CreateUser(ctx, user)
@@ -230,15 +229,15 @@ func (au *authUsecase) IssueTokenPair(ctx context.Context, user *domain.User) (*
 		return nil, fmt.Errorf("failed to generate refresh token: %v", err)
 	}
 
-	refreshToken, err := au.refreshTokenRepository.CreateRefreshToken(ctx, user.ID, refToken,)
+	refreshToken, err := au.refreshTokenRepository.CreateRefreshToken(ctx, user.ID, refToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create refresh token  %v", err)
 	}
 
 	tokenPair := &domain.TokenPair{
-		AccessToken: jwtToken,
+		AccessToken:  jwtToken,
 		RefreshToken: refreshToken.Token,
-		ExpiresIn: refreshToken.ExpiresAt,
+		ExpiresIn:    refreshToken.ExpiresAt,
 	}
 
 	return tokenPair, nil
@@ -251,7 +250,7 @@ func (au *authUsecase) ForgotPassword(ctx context.Context, email string) ( err e
 	}
 
 	resetToken := &domain.PasswordResetToken{
-		ID:			uuid.New().String(),
+		ID:        uuid.New().String(),
 		UserID:    res.ID,
 		Token:     uuid.New().String(),
 		ExpiresAt: time.Now().Add(24 * time.Hour),
@@ -271,41 +270,40 @@ func (au *authUsecase) ForgotPassword(ctx context.Context, email string) ( err e
 	return nil
 }
 
-
 func (au *authUsecase) ResetPassword(ctx context.Context, token, newPassword string) error {
-    ctx, cancel := context.WithTimeout(ctx, au.contextTimeout)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(ctx, au.contextTimeout)
+	defer cancel()
 
-    resetToken, err := au.resetTokenRepository.GetPasswordResetToken(ctx, token)
-    if err != nil {
-        log.Printf("Error fetching reset token: %v", err)
-        return err
-    }
+	resetToken, err := au.resetTokenRepository.GetPasswordResetToken(ctx, token)
+	if err != nil {
+		log.Printf("Error fetching reset token: %v", err)
+		return err
+	}
 
-    hashedPassword, err := au.passwordServices.HashPassword(newPassword)
-    if err != nil {
-        log.Printf("Error hashing password: %v", err)
-        return fmt.Errorf("failed to hash password: %v", err)
-    }
+	hashedPassword, err := au.passwordServices.HashPassword(newPassword)
+	if err != nil {
+		log.Printf("Error hashing password: %v", err)
+		return fmt.Errorf("failed to hash password: %v", err)
+	}
 
-    updates := map[string]interface{}{
-        "password_hash": hashedPassword,
-        "updated_at":    time.Now(),
-    }
-    err = au.userRepository.UpdateUser(ctx, resetToken.UserID, updates)
+	updates := map[string]interface{}{
+		"password_hash": hashedPassword,
+		"updated_at":    time.Now(),
+	}
+	err = au.userRepository.UpdateUser(ctx, resetToken.UserID, updates)
 	log.Print(resetToken.UserID)
-    if err != nil {
-        log.Printf("Error updating user: %v", err)
-        return fmt.Errorf("failed to update user: %v", err)
-    }
+	if err != nil {
+		log.Printf("Error updating user: %v", err)
+		return fmt.Errorf("failed to update user: %v", err)
+	}
 
-    err = au.resetTokenRepository.MarkPasswordResetTokenUsed(ctx, token)
-    if err != nil {
-        log.Printf("Error marking token as used: %v", err)
-        return fmt.Errorf("failed to mark reset token as used: %v", err)
-    }
+	err = au.resetTokenRepository.MarkPasswordResetTokenUsed(ctx, token)
+	if err != nil {
+		log.Printf("Error marking token as used: %v", err)
+		return fmt.Errorf("failed to mark reset token as used: %v", err)
+	}
 
-    return nil
+	return nil
 }
 
 func generateToken() (string, error) {
