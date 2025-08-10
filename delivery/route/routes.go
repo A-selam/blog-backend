@@ -12,7 +12,8 @@ func Setup(ac *controller.AuthController, bc *controller.BlogController, uc *con
 	// ============ Public Routes ============
 	publicRouter := engine.Group("/api")
 	NewAuthRouter(ac, publicRouter)
-	NewBlogRouter(bc, publicRouter) // Public blog routes (read-only)
+	NewBlogRouter(bc, publicRouter, jwtService) // Public blog routes (read-only)
+	
 
 	// ============ Protected Routes (User) ============
 	userRouter := engine.Group("/api")
@@ -48,12 +49,13 @@ func NewUserRouter(handler *controller.UserController, group *gin.RouterGroup) {
 	group.GET("/users/:id", handler.GetUserByID)
 }
 
-func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup) {
-	group.GET("/blogs", handler.ListBlogs)
-	group.GET("/blogs/user/:id", handler.GetBlogsByUserID)
-	group.GET("/blogs/:id", handler.GetBlog)
-	group.GET("/blogs/search", handler.SearchBlogs)
-	group.GET("/blogs/:id/comments", handler.ListAllComments)
+func NewBlogRouter(handler *controller.BlogController, group *gin.RouterGroup, jwtService domain.IJWTService) {
+    group.Use(middleware.NewOptionalAuthMiddleware(jwtService))
+    group.GET("/blogs", handler.ListBlogs)
+    group.GET("/blogs/user/:id", handler.GetBlogsByUserID)
+    group.GET("/blogs/:id", handler.GetBlog)
+    group.GET("/blogs/search", handler.SearchBlogs)
+    group.GET("/blogs/:id/comments", handler.ListAllComments)
 }
 
 func NewBlogAuthRouter(handler *controller.BlogController, handler2 *controller.GeminiController, group *gin.RouterGroup) {
@@ -65,6 +67,7 @@ func NewBlogAuthRouter(handler *controller.BlogController, handler2 *controller.
 	group.DELETE("/blogs/:id/reaction",handler.RemoveReaction)
 	group.POST("/blogs/:id/comments",handler.CreateComment)
 	group.DELETE("/blogs/:id/comments", handler.DeleteCommentByAuth)
+	group.GET("/blogs/get-recommendation", handler.GetRecommendations)
 
 	group.POST("/blogs/ai/generate-content", handler2.GenerateContent)
 	group.POST("/blogs/ai/refine-content", handler2.RefineContent)

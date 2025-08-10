@@ -50,6 +50,23 @@ const (
 	DislikeCountField UpdateMetricsField = "dislike_count"
 )
 
+type TagsCount struct {
+	Tag string
+	Count int
+}
+
+type ReadHistory struct {
+	UserID 		string    
+	BlogID		 string 
+	CreatedAt time.Time
+	Tags     []TagsCount
+}  
+
+
+type IHistoryRepository interface {
+	AddReadHistory(ctx context.Context, userID, blogID string, blogTags []string) error
+	GetRecommendations(ctx context.Context, userID string) ([]*Blog, error)
+}
 
 
 type IBlogRepository interface {
@@ -107,4 +124,6 @@ type IBlogUseCase interface {
 	GetComments(ctx context.Context, blogID string) ([]*Comment, error)
 	RemoveComment(ctx context.Context,commentID string)(error)
 	IsComAuthor(ctx context.Context, comId, userId string) (bool,error)
+	AddReadHistory(ctx context.Context, userID, blogID string) error
+	GetRecommendations(ctx context.Context, userID string) ([]*Blog, error)
 }

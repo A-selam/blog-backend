@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -17,6 +18,19 @@ type blogRepository struct {
 	collection string
 }
 
+type historyRepository struct {
+	database   *mongo.Database
+	collection string
+}
+
+
+
+func NewHistoryRepositoryFromDB(db *mongo.Database) domain.IHistoryRepository {
+	return &historyRepository{
+		database:   db,
+		collection: "read_history",
+	}
+}
 func NewBlogRepositoryFromDB(db *mongo.Database) domain.IBlogRepository {
 	return &blogRepository{
 		database:   db,
@@ -221,6 +235,122 @@ func (br *blogRepository) IsAuthor(ctx context.Context, blogID, userID string) (
 	return count > 0, nil
 }
 
+
+func (h *historyRepository) AddReadHistory(ctx context.Context, userID, blogID string, blogTags []string) error {
+    collection := h.database.Collection(h.collection)
+
+    // get an UpdateOptions with Upsert=true using the helper
+    upsertOpts := options.UpdateOne().SetUpsert(true)
+
+    // 1. Add read entry (upsert to create history doc if missing)
+    readUpdate := bson.M{
+        "$push": bson.M{
+            "reads": bson.M{
+                "blog_id":    blogID,
+                "created_at": time.Now(),
+            },
+        },
+        "$setOnInsert": bson.M{
+            "user_id": userID,
+            "tags":    []interface{}{},
+        },
+    }
+    _, err := collection.UpdateOne(ctx, bson.M{"user_id": userID}, readUpdate, upsertOpts)
+    if err != nil {
+        return fmt.Errorf("failed to update read history: %v", err)
+    }
+
+    // 2. Increment or insert tags
+    for _, tag := range blogTags {
+        filter := bson.M{"user_id": userID, "tags.tag": tag}
+        update := bson.M{"$inc": bson.M{"tags.$.count": 1}}
+
+        result, err := collection.UpdateOne(ctx, filter, update)
+        if err != nil {
+            return fmt.Errorf("failed to increment tag: %v", err)
+        }
+
+        // If the tag doesn't exist, push it (use upsert opts to be safe)
+        if result.MatchedCount == 0 {
+            _, err = collection.UpdateOne(
+                ctx,
+                bson.M{"user_id": userID},
+                bson.M{"$push": bson.M{"tags": bson.M{"tag": tag, "count": 1}}},
+                upsertOpts,
+            )
+            if err != nil {
+                return fmt.Errorf("failed to add new tag: %v", err)
+            }
+        }
+    }
+
+    return nil
+}
+
+
+func (h *historyRepository) GetRecommendations(ctx context.Context, userID string) ([]*domain.Blog, error) {
+    collection := h.database.Collection(h.collection)
+    blogRepo := NewBlogRepositoryFromDB(h.database) // same DB assumed
+
+    // Fetch only the tags array from the user's history
+    var onlyTags struct {
+        Tags []domain.TagsCount `bson:"tags"`
+    }
+    err := collection.FindOne(
+        ctx,
+        bson.M{"user_id": userID},
+        options.FindOne().SetProjection(bson.M{"tags": 1}),
+    ).Decode(&onlyTags)
+    if err != nil {
+        if err == mongo.ErrNoDocuments {
+            return []*domain.Blog{}, nil // no history -> empty
+        }
+        return nil, fmt.Errorf("failed to get read history: %v", err)
+    }
+
+    tags := onlyTags.Tags
+    if len(tags) == 0 {
+        return []*domain.Blog{}, nil
+    }
+
+    // sort tags by count desc and take top 3
+    sort.Slice(tags, func(i, j int) bool {
+        return tags[i].Count > tags[j].Count
+    })
+    if len(tags) > 3 {
+        tags = tags[:3]
+    }
+
+    // collect blogs for each top tag (deduplicate)
+    blogSet := make(map[string]*domain.Blog)
+    for _, t := range tags {
+        blogs, err := blogRepo.SearchBlogs(ctx, t.Tag)
+        if err != nil {
+            return nil, fmt.Errorf("failed to search blogs for tag %s: %v", t.Tag, err)
+        }
+        for _, b := range blogs {
+            blogSet[b.ID] = b
+        }
+    }
+
+    // convert to slice and sort by view count desc
+    blogs := make([]*domain.Blog, 0, len(blogSet))
+    for _, b := range blogSet {
+        blogs = append(blogs, b)
+    }
+    sort.Slice(blogs, func(i, j int) bool {
+        return blogs[i].ViewCount > blogs[j].ViewCount
+    })
+
+    // limit to top 3
+    if len(blogs) > 3 {
+        blogs = blogs[:3]
+    }
+
+    return blogs, nil
+}
+
+
 type BlogResponseDTO struct {
 	ID           bson.ObjectID `bson:"_id"`
 	Title        string        `bson:"title" binding:"required"`
@@ -282,4 +412,11 @@ func DtoToDomain(blogDTO *BlogResponseDTO) *domain.Blog {
 		DislikeCount: blogDTO.DislikeCount,
 		CommentCount: blogDTO.CommentCount,
 	}
+}
+
+type HistoryDTO struct{
+	UserID 		string   `bson: "user_id" binding: "required"` 
+	BlogID		 string 	`bson: "blog_id" binding: "required"`
+	CreatedAt time.Time		`bson:"created_at"`
+	Tags     []domain.TagsCount	`bson: "tags"`
 }

@@ -52,6 +52,21 @@ func NewAdminMiddleware() gin.HandlerFunc{
 	}
 }
 
+func NewOptionalAuthMiddleware(jwtService domain.IJWTService) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        authHeader := c.GetHeader("Authorization")
+        if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+            tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+            userID, role, err := jwtService.ParseToken(tokenString)
+            if err == nil {
+                c.Set("x-user-id", userID)
+                c.Set("x-user-role", role)
+            }
+        }
+        c.Next()
+    }
+}
+
 func NewStatusCheckMiddleware() gin.HandlerFunc{
 	return func(c *gin.Context){
 		status, err := c.Cookie("status")
