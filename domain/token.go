@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -16,7 +17,7 @@ type RefreshToken struct {
 type TokenPair struct {
     AccessToken  string
     RefreshToken string
-    ExpiresIn    int64 
+    ExpiresIn    time.Time 
 }
 
 type PasswordResetToken struct {
@@ -28,9 +29,17 @@ type PasswordResetToken struct {
 	CreatedAt time.Time
 }
 
+type ActivateUserToken struct {
+	ID     		string
+	UserID 		string
+	CreatedAT 	string
+	ExpiresAt 	string
+}
+
 type IRefreshTokenRepository interface {
 	// Refresh Tokens
-	CreateRefreshToken(ctx context.Context, token *RefreshToken) (*RefreshToken, error)
+	CreateRefreshToken(ctx context.Context, userID, refToken string) (*RefreshToken, error)
+	ReplaceRefreshToken(ctx context.Context, userID, refToken string) (*RefreshToken, error)
 	GetRefreshToken(ctx context.Context, token string) (*RefreshToken, error)
 	DeleteRefreshToken(ctx context.Context, token string) error
 	DeleteRefreshTokensForUser(ctx context.Context, userID string) error
@@ -42,3 +51,21 @@ type IResetTokenRepository interface {
 	GetPasswordResetToken(ctx context.Context, token string) (*PasswordResetToken, error)
 	MarkPasswordResetTokenUsed(ctx context.Context, token string) error
 }
+
+type IActivationTokenRepository interface {
+	CreateActivationToken(ctx context.Context, userID string) (string, error)
+	GetTokenUser(ctx context.Context, tokenID string) (string, error)
+	DeleteActivationToken(ctx context.Context, tokenID string) error
+}
+
+var (
+	ErrTokenNotFound = errors.New("token not found")
+	ErrInvalidBlogTitle = errors.New("invalid blog title")
+	ErrInvalidBlogContent = errors.New("invalid blog content")
+	ErrInvalidPasswordResetToken = errors.New("invalid password reset token")
+	ErrPasswordResetTokenExpired = errors.New("password reset token expired")
+	ErrTokenUsed = errors.New("token already used")
+	ErrTokenExpired = errors.New("token expired")
+	
+
+)
