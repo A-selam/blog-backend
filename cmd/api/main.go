@@ -12,7 +12,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
+	"github.com/gin-contrib/cors" 
+	"github.com/redis/go-redis/v9" 
+
+	limiter "github.com/ulule/limiter/v3"
+	ginmiddleware "github.com/ulule/limiter/v3/drivers/middleware/gin"
+	redistore "github.com/ulule/limiter/v3/drivers/store/redis"
 )
 
 func main() {
@@ -25,30 +30,30 @@ func main() {
 
 	client, db := infrastructure.NewDatabase(envConfig.MongoURI, envConfig.DBName)
 	defer client.Disconnect(context.TODO())
-	
+
 	opts, err := redis.ParseURL(envConfig.RedisURL)
-    if err != nil {
-        log.Fatalf("Could not parse Redis URL: %v", err)
-    }
+	if err != nil {
+		log.Fatalf("Could not parse Redis URL: %v", err)
+	}
 
-    redisClient := redis.NewClient(opts)
+	redisClient := redis.NewClient(opts)
 
-    pong, err := redisClient.Ping(context.Background()).Result()
-    if err != nil {
-        log.Fatalf("Could not connect to Redis: %v", err)
-    }
-    log.Println("Connected to Redis:", pong)
+	pong, err := redisClient.Ping(context.Background()).Result()
+	if err != nil {
+		log.Fatalf("Could not connect to Redis: %v", err)
+	}
+	log.Println("Connected to Redis:", pong)
 
 	// Initialize services and repositories
-    timeOut := 30 * time.Second
-    jwtService := infrastructure.NewJWTService(envConfig.JWTSecret)
-    passwordService := infrastructure.NewPasswordService()
+	timeOut := 30 * time.Second
+	jwtService := infrastructure.NewJWTService(envConfig.JWTSecret)
+	passwordService := infrastructure.NewPasswordService()
 	geminiService := infrastructure.NewGeminiService(envConfig.GeminiAPIKey)
-	emailServices := infrastructure.NewEmailServices(envConfig.Email, envConfig.AppPassword)
-
+	emailServices := infrastructure.NewEmailServices(envConfig.Email, envConfig.AppPassword) 
 	
 	cacheRepo := repository.NewCacheRepository(redisClient)
 	cacheUseCase := usecase.NewCacheUseCase(cacheRepo, redisClient, timeOut) 
+
 	gu := usecase.NewGeminiUsecase(geminiService)
 	gc := controller.NewGeminiController(gu)
 
@@ -59,21 +64,53 @@ func main() {
 	bcr := repository.NewCommentRepositoryFromDB(db)
 	brr := repository.NewReactionRepositoryFromDB(db)
 	br := repository.NewBlogRepositoryFromDB(db)
-	hr := repository.NewHistoryRepositoryFromDB(db)
-	bu := usecase.NewBlogUsecase(br, brr, bcr,hr, geminiService,timeOut, cacheUseCase)
+	hr := repository.NewHistoryRepositoryFromDB(db) 
+	bu := usecase.NewBlogUsecase(br, brr, bcr, hr, geminiService, timeOut, cacheUseCase) 
 	bc := controller.NewBlogController(bu)
+	
 	resetTR := repository.NewResetTokenRepository(db)
 	refreshTR := repository.NewRefreshTokenRepositoryFromDB(db)
-	atr := repository.NewActivationTokenRepository(db)
-	au := usecase.NewAuthUsecase(ur, refreshTR, resetTR, jwtService, passwordService, emailServices, atr, timeOut)
+	atr := repository.NewActivationTokenRepository(db) 
+	au := usecase.NewAuthUsecase(ur, refreshTR, resetTR, jwtService, passwordService, emailServices, atr, timeOut) 
 	ac := controller.NewAuthController(au, googleConfig)
 
-    // Set up Gin router
-    engine := gin.Default()
-    route.Setup(ac, bc, uc, gc, jwtService, engine)
+	// Set up Gin router
+	engine := gin.Default()
 
-    // Start server
-    if err := engine.Run("localhost:3000"); err != nil {
-        log.Fatal("Failed to start server:", err)
-    }
+	// --- CORS Configuration ---
+	engine.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, 
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "Content-Length"},
+		ExposeHeaders:    []string{"Content-Length", "X-RateLimit-Limit", "X-RateLimit-Remaining"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// --- Rate Limiting Middleware with Redis ---
+	rate := limiter.Rate{
+		Period: time.Minute,
+		Limit:  100,
+	}
+
+	store, err := redistore.NewStore(redisClient) 
+	if err != nil {
+		log.Fatalf("Failed to create Redis rate limit store: %v", err)
+	}
+
+	// Corrected: Create the core limiter instance first
+	rateLimiterInstance := limiter.New(store, rate)
+
+	// Corrected: Then create the Gin middleware using NewMiddleware and the limiter instance
+	rateLimitMiddleware := ginmiddleware.NewMiddleware(rateLimiterInstance) 
+	
+	// Apply the rate limit middleware globally
+	engine.Use(rateLimitMiddleware)
+
+	route.Setup(ac, bc, uc, gc, jwtService, engine)
+
+	// Start server
+	if err := engine.Run("localhost:3000"); err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
 }
